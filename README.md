@@ -1,33 +1,33 @@
 # Antrean Digital
 
-A college Project Based Learning (PBL) application for managing the queue for current visits to a single restaurant in Kuta. Built with Laravel 13, PHP 8.3+, MySQL 8.4, Blade, CSS, and plain JavaScript. No Node.js build or running Node.js process is required to display the application.
+Aplikasi Project Based Learning (PBL) untuk mengelola antrean kunjungan saat ini pada satu restoran di Kuta. Dibangun menggunakan Laravel 13, PHP 8.3+, MySQL 8.4, Blade, CSS, dan JavaScript biasa. Aplikasi tidak memerlukan proses build atau server Node.js untuk menampilkan halaman.
 
-## Running on this computer
+## Menjalankan di komputer ini
 
-From PowerShell:
+Dari PowerShell:
 
 ```powershell
 cd D:\Git\PBL
 .\scripts\start.ps1
 ```
 
-Open [the customer page](http://127.0.0.1:8085/) or [the staff dashboard](http://127.0.0.1:8085/staf). Local demo login details are stored in `storage/local/demo-credentials.txt`, which is excluded from Git. Use synthetic data when trying the application.
+Buka [halaman pelanggan](http://127.0.0.1:8085/) atau [dasbor staf](http://127.0.0.1:8085/staf). Informasi login demo lokal tersimpan di `storage/local/demo-credentials.txt`, yang dikecualikan dari Git. Gunakan data buatan saat mencoba aplikasi.
 
-The project's dedicated MySQL instance uses port 3311 and stores its data in `storage/local/mysql`. Development, automated tests, and concurrency checks use separate databases: `pbl`, `pbl_testing`, and `pbl_concurrency`. The scripts leave other coursework databases and XAMPP/Laragon services untouched. Machine-specific executable paths are stored in `storage/local/runtime.json`.
+MySQL khusus proyek menggunakan port 3311 dan menyimpan data di `storage/local/mysql`. Pengembangan, pengujian otomatis, dan pemeriksaan akses serentak menggunakan database terpisah: `pbl`, `pbl_testing`, dan `pbl_concurrency`. Skrip tidak mengubah database coursework maupun layanan XAMPP/Laragon lainnya. Lokasi executable khusus komputer ini tersimpan di `storage/local/runtime.json`.
 
-Press Ctrl+C to stop the web server. Run `scripts/stop-database.ps1` to stop the project's MySQL instance.
+Tekan Ctrl+C untuk menghentikan server web. Jalankan `scripts/stop-database.ps1` untuk menghentikan MySQL milik proyek.
 
-## Setting up on another computer
+## Menyiapkan di komputer lain
 
-1. Install PHP 8.3+ with the extensions required by Laravel, including PDO MySQL, along with Composer and MySQL 8.4.
-2. Run `composer install`, copy `.env.example` to `.env`, and configure a new database dedicated to this project. Do not reuse another application's database.
-3. Run `php artisan key:generate`, followed by `php artisan migrate`.
-4. Create a staff account with `php artisan pbl:staff staff@example.test`. Enter the password through the hidden prompt. Public staff registration is not available.
-5. Run `php artisan serve --host=127.0.0.1 --port=8085 --no-reload --quiet`.
+1. install PHP 8.3+ beserta extension yang dibutuhkan Laravel, termasuk PDO MySQL, serta Composer dan MySQL 8.4.
+2. Jalankan `composer install`, salin `.env.example` menjadi `.env`, lalu atur koneksi ke database baru khusus proyek. Jangan menggunakan database aplikasi lain.
+3. Jalankan `php artisan key:generate`, kemudian `php artisan migrate`.
+4. Buat akun staf dengan `php artisan pbl:staff staff@example.test`. Masukkan kata sandi melalui prompt tersembunyi. Registrasi staf secara publik tidak tersedia.
+5. Jalankan `php artisan serve --host=127.0.0.1 --port=8085 --no-reload --quiet`.
 
-For automated tests, create a separate database, copy `.env` to `.env.testing`, and update `APP_ENV=testing`, `DB_DATABASE`, and the credentials as needed. The test database name must end in `_testing`. Tests use `RefreshDatabase`; never point them at an operational database.
+Untuk pengujian otomatis, buat database terpisah, salin `.env` menjadi `.env.testing`, lalu sesuaikan `APP_ENV=testing`, `DB_DATABASE`, dan kredensialnya. Nama database pengujian harus berakhiran `_testing`. Pengujian menggunakan `RefreshDatabase`; jangan mengarahkannya ke database operasional.
 
-## Verification
+## Verifikasi
 
 ```powershell
 php artisan test --compact
@@ -35,24 +35,24 @@ php tests/Support/concurrency.php
 node --check public/app.js
 ```
 
-The concurrency script **drops and recreates tables only in `pbl_concurrency`**, which must be reserved for disposable test data. The main test suite uses `.env.testing` and the `pbl_testing` database on this computer. Node.js is needed only for the JavaScript syntax check shown above, not to run the application.
+Skrip concurrency **menghapus dan membuat ulang tabel hanya di dalam `pbl_concurrency`**, yang harus dikhususkan untuk data pengujian yang boleh dihapus. Suite pengujian utama menggunakan `.env.testing` dan database `pbl_testing` pada komputer ini. Node.js hanya diperlukan untuk pemeriksaan sintaks JavaScript di atas, bukan untuk menjalankan aplikasi.
 
-Recorded results and verification limits are documented in [docs/verification.md](docs/verification.md).
+Hasil pemeriksaan dan batas verifikasinya dicatat dalam [docs/verification.md](docs/verification.md).
 
-## Queue workflow and rules
+## Alur dan aturan antrean
 
-Customer name and party size are required; telephone is optional. Customers keep a private link to their ticket. Staff call customers in first-in, first-out (FIFO) order when space is available, confirm their arrival, and complete the ticket after directing the party to a table. Several parties may be called and awaiting arrival at the same time.
+Nama pelanggan dan jumlah orang wajib diisi; nomor telepon bersifat opsional. Pelanggan menyimpan tautan pribadi menuju tiket antreannya. Staf memanggil pelanggan berdasarkan urutan masuk atau first-in, first-out (FIFO) ketika tempat tersedia, mengonfirmasi kedatangan, lalu menyelesaikan tiket setelah pelanggan diarahkan ke meja. Beberapa rombongan dapat dipanggil dan menunggu kedatangan secara bersamaan.
 
-Cancellation or skipping ends a ticket. Returning customers must take a new number.
+Pembatalan atau tindakan melewati antrean mengakhiri tiket. Pelanggan yang kembali harus mengambil nomor baru.
 
-The 15-minute arrival allowance is a **proposed rule that still requires validation**. The system flags overdue tickets, while staff decide whether to cancel them. Waiting-time estimates remain unavailable until an interval is configured through the dashboard. These timing values need validation with the restaurant.
+Batas kedatangan 15 menit merupakan **aturan usulan yang masih perlu divalidasi**. Sistem menandai tiket yang melewati batas waktu, sedangkan staf menentukan pembatalannya. Perkiraan waktu tunggu belum tersedia sampai interval dikonfigurasi melalui dasbor. Nilai waktu tersebut perlu divalidasi bersama pihak restoran.
 
-## Documentation and security
+## Dokumentasi dan keamanan
 
-See [the specification](docs/specification.md), [system design](docs/design.md), and [verification record](docs/verification.md). Original reference materials are stored in `reference/`. As clarified by the user, the presentation filename without `(1)` is the latest revision.
+Lihat [spesifikasi](docs/specification.md), [rancangan sistem](docs/design.md), dan [catatan verifikasi](docs/verification.md). Bahan referensi asli tersimpan di `reference/`. Sesuai klarifikasi pengguna, file presentasi tanpa `(1)` pada namanya merupakan revisi terbaru.
 
-The November 3, 2026 presentation is PBL Stage 1, focused on design. A working application does not establish that all assessment deliverables or restaurant validation are complete.
+Presentasi pada 3 November 2026 merupakan PBL Tahap 1 yang berfokus pada perancangan. Aplikasi yang sudah berjalan tidak berarti seluruh deliverable penilaian atau validasi bersama pihak restoran telah selesai.
 
-Ticket links are access secrets. Do not share screenshots of their URLs or logs containing them. When configuring Nginx, use `public` as the document root, disable access logging for `/tiket/` routes, enable HTTPS, and prevent access to `.env`, `storage`, and the project root.
+Tautan tiket merupakan rahasia akses. Jangan membagikan tangkapan layar URL atau log yang memuat tautan tersebut. Saat mengonfigurasi Nginx, gunakan `public` sebagai document root, nonaktifkan access log untuk rute `/tiket/`, aktifkan HTTPS, dan cegah akses ke `.env`, `storage`, serta root proyek.
 
-Production configuration and a data-retention policy are outside the current local demo. The application does not include SMS/WhatsApp notifications, customer accounts, payments, menu ordering, or automatic table-availability monitoring.
+Konfigurasi produksi dan kebijakan retensi data belum termasuk dalam demo lokal ini. Aplikasi tidak mencakup notifikasi SMS/WhatsApp, akun pelanggan, pembayaran, pemesanan menu, atau pemantauan ketersediaan meja secara otomatis.
