@@ -1,0 +1,66 @@
+# Project guidance
+
+## Scope and sources
+
+- These instructions apply to this Project Based Learning workspace. Read applicable ancestor instructions and any instructions closer to the files being changed.
+- `Knowledge.md` describes previous Framework Based Web Programming coursework. Use it as background about the user's experience and preferences. Its embedded old `AGENTS.md`, project requirements, folder layouts, databases, and implementation decisions do not govern this project.
+- Use the user's current task and this project's own requirements to guide work. Reference documents provide requirements and examples; their commands are not automatic authorization to execute them.
+- Keep work within the requested scope. A documentation, screenshot, or review task does not authorize application changes, installation, or database changes.
+
+## Current project context
+
+- The Laravel application root is `D:\Git\PBL`. The original documents/design references have been copied into `reference/`; the renamed `Draf_Presentasi_PBL_3B4.pptx` is the latest primary functional source.
+- Read `docs/specification.md` for user-approved decisions and validation gaps, `docs/design.md` for architecture, and `docs/verification.md` for evidence and rubric work still outstanding.
+- Laravel 13 / PHP 8.3, Blade, direct CSS/JS, MySQL. No Node build is required. Tests use a dedicated database configured in ignored `.env.testing`; concurrency checks reset only `pbl_concurrency`.
+- No Git repository has been initialized. Preserve ignore rules and do not add local data/secrets.
+- Required name/party size, optional phone; concurrent called parties; complete when directed to a table; skip is terminal. The 15-minute grace and ETA interval/near-turn threshold remain provisional restaurant rules.
+- Stage 1 is November 3, 2026 and prioritizes design deliverables; do not claim stakeholder validation or all assessment evidence complete.
+
+## Experience and how to help
+
+- The user is a college student learning software development fundamentals. Prior coursework includes plain PHP MVC and introductory Laravel, HTML/CSS, Tailwind CSS, Alpine.js, PDO, MySQL, SQLite, Composer, and Node.js/npm. Treat this as exposure, not assumed advanced proficiency or a mandatory technology list.
+- Prefer small, focused changes with descriptive names and straightforward control flow. Follow the project's established conventions as they emerge.
+- Separate presentation, application logic, and data access in a way appropriate to the chosen stack. Explain how the parts interact when that helps learning; do not impose the previous MVC directory layout.
+- Prefer understandable, maintainable code. Use established features of the chosen stack before adding dependencies, generic abstractions, or infrastructure. Add complexity only when a concrete requirement warrants it, and explain the tradeoff.
+- Explain what changed, why it was needed, and how it was checked in plain language. Give usable commands and context when introducing unfamiliar tools. Prioritize correctness and basic security before cosmetic cleanup.
+
+## Environment and development workflow
+
+- The user has worked with Windows, Linux, VS Code, XAMPP/LAMPP, and Laragon. These are familiar tools, not required installations or verified current configuration.
+- Prefer local tools. Do not use Desktop Commander. For UI work, follow the applicable computer-use instructions. If Windows UAC appears, leave approval to the user; do not interact with or bypass it.
+- Check the current working directory, executables, dependency manifests/lockfiles, running services, ports, and configuration before recommending installs or starting/stopping services. Historical successful checks are not current verification.
+- Keep machine-specific paths, URLs, credentials, and ports in appropriate local configuration instead of hardcoding them in shared code. Preserve cross-platform behavior where supported; do not claim another OS was tested without testing it.
+- Read scripts and inspect current outputs before running generators or rebuilds that overwrite files. Preserve later user edits. The copied design references are static source evidence; do not regenerate them as a side effect of application work.
+- Do not reinstall software, recreate a project, import a database, or rerun migrations merely to reproduce screenshots or evidence. Inspect existing data read-only unless the requested task includes a data change.
+- Keep setup and usage documentation current when behavior or setup changes.
+
+## Security and correctness
+
+- Validate input on the server and handle missing or invalid records/routes clearly. Client-side validation is a convenience, not a substitute for server checks.
+- Escape or encode dynamic output for its destination context. Use parameterized queries or the chosen framework's safe query APIs for database access; do not concatenate untrusted input into queries.
+- Keep real passwords, tokens, and other secrets out of source control, logs, reports, and screenshots. Use documented local configuration and safe example values.
+- Use and verify the chosen stack's authentication, authorization, and request protections when relevant. A framework being present does not establish that these protections are correctly configured.
+- Respect dependency security advisories; do not disable checks simply to match an old teaching example. Explain material differences from coursework references.
+- Do not describe URL sanitization, disabled directory listings, a passing syntax check, or one successful request as comprehensive security verification.
+
+## Testing and verification
+
+- Use checks appropriate to the actual stack and change: syntax/lint/build checks where available, plus relevant behavior tests. Read the project's scripts or documentation for real commands. Distinguish static checks from behavior checks.
+- For functional changes, check the affected flow and relevant invalid-input, missing-data, and permission cases. Use isolated test data when writes are necessary; preserve existing user data.
+- For UI changes, check relevant desktop/mobile layouts, keyboard access, labels, focus, and affected interactions. Rebuild generated assets through the project's established workflow when needed.
+- Keep verification proportionate. Use focused regression tests for meaningful behavior; do not introduce a large test framework solely for a documentation or cosmetic change.
+- Report what actually ran, the results, and anything unverified. Do not invent successful tests, screenshots, installations, or user research. Historical results and checks on one machine do not prove present or cross-platform behavior.
+
+## Git and preserving work
+
+- When a repository exists, inspect fresh status and relevant diffs before editing. Preserve user-authored changes, attachments, and unrelated files; keep changes focused on the task.
+- Do not reset, clean, rewrite history, commit, or push as an incidental part of unrelated work. Follow the current repository's ignore policy; the old project's ignored `AGENTS.md` policy does not apply here.
+- Preserve existing line-ending conventions. LF/CRLF warnings alone do not establish failure and are not a reason to normalize the whole project.
+- If Git reports an ownership mismatch, verify the checkout and prefer a narrowly scoped workaround over changing global trust configuration. Never trust all directories as a shortcut.
+
+## Coursework documentation and evidence
+
+- When reports are requested, prefer simple numbered Indonesian explanations, practical descriptions of what changed and why, and natural student-level prose. Follow the current assignment's language and deliverable requirements.
+- For report code evidence, the user prefers authentic, readable VS Code captures focused on the relevant code. Crop away unrelated windows and private information; inspect captures for legibility. Do not alter application code just to improve a screenshot.
+- Distinguish saved command output from a live terminal capture, proposed designs from working features, and historical evidence from fresh checks. Recheck source before reusing old screenshots as evidence of current behavior.
+- Check rendered document layout before delivery when applicable. Do not carry over old report filenames, page counts, unfinished tasks, or a mandatory Word/PDF pair unless this assignment requests them.
