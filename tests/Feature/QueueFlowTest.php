@@ -200,4 +200,17 @@ class QueueFlowTest extends TestCase
         $staff = $this->staff();
         $this->post('/staf/masuk', ['email' => $staff->email, 'password' => 'password'])->assertRedirect('/staf');
     }
+
+    public function test_polled_staff_pagination_stays_on_dashboard_and_preserves_filters(): void
+    {
+        for ($i = 0; $i < 16; $i++) {
+            $this->issue();
+        }
+
+        $response = $this->actingAs($this->staff())->get('/staf/status?q=Pelanggan&status=waiting')->assertOk();
+        $html = $response->json('html');
+
+        $this->assertStringContainsString(e(route('staff.index', ['q' => 'Pelanggan', 'status' => 'waiting', 'page' => 2])), $html);
+        $this->assertStringNotContainsString('/staf/status?', $html);
+    }
 }

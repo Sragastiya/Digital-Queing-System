@@ -13,7 +13,11 @@ class StaffQueueController extends Controller
 {
     private function data(Request $request): array
     {
-        $filter = $request->validate(['q' => ['nullable', 'string', 'max:120'], 'status' => ['nullable', 'in:waiting,called,arrived,completed,cancelled']]);
+        $filter = $request->validate(['q' => ['nullable', 'string', 'max:120'], 'status' => ['nullable', 'in:waiting,called,arrived,completed,cancelled']], [
+            'q.string' => 'Pencarian harus berupa teks.',
+            'q.max' => 'Pencarian maksimal :max karakter.',
+            'status.in' => 'Pilih status antrean yang tersedia.',
+        ]);
         $query = QueueTicket::query();
         if ($q = $filter['q'] ?? null) {
             $query->where(fn ($builder) => $builder->where('customer_name', 'like', '%'.$q.'%')->orWhere('number', ltrim(str_ireplace('A-', '', $q), '0')));
@@ -72,7 +76,11 @@ class StaffQueueController extends Controller
 
     public function settings(Request $request)
     {
-        $data = $request->validate(['estimate_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:1440']]);
+        $data = $request->validate(['estimate_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:1440']], [
+            'estimate_interval_minutes.integer' => 'Interval panggilan harus berupa bilangan bulat.',
+            'estimate_interval_minutes.min' => 'Interval panggilan minimal :min menit.',
+            'estimate_interval_minutes.max' => 'Interval panggilan maksimal :max menit.',
+        ]);
         QueueSetting::findOrFail(1)->update($data);
 
         return redirect()->route('staff.index')->with('notice', 'Perkiraan tunggu diperbarui. Nilai ini masih perlu validasi operasional.');

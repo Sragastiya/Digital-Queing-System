@@ -15,7 +15,12 @@ class StaffAuthController extends Controller
 
     public function store(Request $request)
     {
-        $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
+        $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']], [
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Masukkan alamat email yang valid.',
+            'password.required' => 'Kata sandi wajib diisi.',
+            'password.string' => 'Kata sandi harus berupa teks.',
+        ]);
         if (! Auth::attempt($credentials)) {
             throw ValidationException::withMessages(['email' => 'Email atau kata sandi tidak cocok.']);
         }
