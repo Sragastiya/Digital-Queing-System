@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\QueueType;
 use App\Http\Requests\JoinQueueRequest;
 use App\Models\QueueTicket;
 use App\Services\QueueService;
@@ -13,7 +14,12 @@ class CustomerQueueController extends Controller
 {
     public function index(WaitEstimateService $estimate)
     {
-        return view('customer.join', ['snapshot' => $estimate->snapshot(), 'operation' => (string) Str::uuid(), 'token' => bin2hex(random_bytes(32))]);
+        $snapshots = [];
+        foreach (QueueType::cases() as $queueType) {
+            $snapshots[$queueType->value] = $estimate->snapshot($queueType);
+        }
+
+        return view('customer.join', ['snapshots' => $snapshots, 'queueTypes' => QueueType::cases(), 'operation' => (string) Str::uuid(), 'token' => bin2hex(random_bytes(32))]);
     }
 
     public function store(JoinQueueRequest $request, QueueService $queue)
@@ -35,14 +41,14 @@ class CustomerQueueController extends Controller
     {
         $ticket = $this->find($token);
 
-        return response()->view('customer.ticket', ['ticket' => $ticket, 'snapshot' => $estimate->snapshot($ticket), 'token' => $token, 'operation' => (string) Str::uuid()])->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
+        return response()->view('customer.ticket', ['ticket' => $ticket, 'snapshot' => $estimate->snapshot($ticket->queue_type, $ticket), 'token' => $token, 'operation' => (string) Str::uuid()])->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
     }
 
     public function status(string $token, WaitEstimateService $estimate)
     {
         $ticket = $this->find($token);
 
-        return response()->json(['status' => $ticket->status->value, 'label' => $ticket->status->label(), 'deadline' => $ticket->arrival_deadline?->toIso8601String(), 'snapshot' => $estimate->snapshot($ticket)])->header('Cache-Control', 'no-store, private');
+        return response()->json(['queue_type' => $ticket->queue_type->value, 'queue_label' => $ticket->queue_type->label(), 'status' => $ticket->status->value, 'label' => $ticket->status->label(), 'deadline' => $ticket->arrival_deadline?->toIso8601String(), 'snapshot' => $estimate->snapshot($ticket->queue_type, $ticket)])->header('Cache-Control', 'no-store, private');
     }
 
     public function cancel(Request $request, string $token, QueueService $queue)

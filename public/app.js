@@ -7,6 +7,7 @@
     const indicator = document.getElementById('refresh-state');
     const formState = document.getElementById('form-state');
     const terminal = ticket?.dataset.terminal === 'true';
+    const registration = document.querySelector('[data-queue-registration]');
     let pendingForm = null;
     let pendingSubmitter = null;
     let returnFocus = null;
@@ -45,6 +46,20 @@
 
     document.querySelectorAll('.stepper').forEach(syncStepper);
     document.querySelector('[data-error-summary]')?.focus();
+
+    function syncQueueSelection() {
+        if (!registration) return;
+        const selected = registration.querySelector('[name="queue_type"]:checked')?.value || '';
+        registration.querySelectorAll('[data-queue-snapshot]').forEach(panel => {
+            panel.hidden = panel.dataset.queueSnapshot !== selected;
+        });
+        const submit = registration.querySelector('[data-queue-submit]');
+        submit.disabled = !selected;
+        submit.textContent = selected ? 'Ambil nomor antrean' : 'Pilih layanan terlebih dahulu';
+    }
+
+    syncQueueSelection();
+    registration?.addEventListener('change', syncQueueSelection);
 
     document.addEventListener('input', event => {
         if (event.target.closest('.stepper')) syncStepper(event.target.closest('.stepper'));
@@ -169,6 +184,7 @@
             }
             if (!response.ok) throw new Error('Refresh failed');
             const data = await response.json();
+            if (data.queue_type !== (ticket || board).dataset.queueType) throw new Error('Queue changed');
             // A pending response must not replace controls opened or edited since fetch began.
             if (busyForm || dialog?.open) return;
             if (ticket) {
@@ -228,6 +244,7 @@
     window.addEventListener('pageshow', event => {
         if (!event.persisted) return;
         restoreSubmission();
+        syncQueueSelection();
         if (formState) formState.hidden = true;
         poll();
     });

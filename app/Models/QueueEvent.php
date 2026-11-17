@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\QueueType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -10,6 +11,11 @@ class QueueEvent extends Model
     public const UPDATED_AT = null;
 
     protected $guarded = ['id'];
+
+    protected function casts(): array
+    {
+        return ['queue_type' => QueueType::class];
+    }
 
     public function ticket(): BelongsTo
     {

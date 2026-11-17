@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\QueueType;
 use App\Enums\TicketStatus;
 use App\Models\QueueSetting;
 use App\Models\QueueTicket;
@@ -22,7 +23,7 @@ class QueueFlowTest extends TestCase
         $token = bin2hex(random_bytes(32));
         $op = (string) Str::uuid();
 
-        return [app(QueueService::class)->issue(['customer_name' => $name, 'party_size' => 2], $token, $op), $token, $op];
+        return [app(QueueService::class)->issue(['queue_type' => 'dine_in', 'customer_name' => $name, 'party_size' => 2], $token, $op), $token, $op];
     }
 
     private function staff(): User
@@ -32,19 +33,19 @@ class QueueFlowTest extends TestCase
 
     public function test_customer_and_staff_complete_the_full_flow(): void
     {
-        $this->get('/')->assertOk()->assertSee('Antre lebih nyaman.');
+        $this->get('/')->assertOk()->assertSee('Ambil nomor antrean');
         $this->get('/staf')->assertRedirect('/staf/masuk');
         $token = bin2hex(random_bytes(32));
-        $this->post('/antrean', ['customer_name' => 'Made', 'party_size' => 3, 'phone' => null, 'access_token' => $token, 'operation_id' => (string) Str::uuid()])->assertRedirect('/tiket/'.$token);
+        $this->post('/antrean', ['queue_type' => 'dine_in', 'customer_name' => 'Made', 'party_size' => 3, 'phone' => null, 'access_token' => $token, 'operation_id' => (string) Str::uuid()])->assertRedirect('/tiket/'.$token);
         $ticket = QueueTicket::firstOrFail();
         $this->assertNull($ticket->phone);
         $this->get('/tiket/'.$token)->assertOk()->assertSee('Made');
         $staff = $this->staff();
-        $this->actingAs($staff)->post('/staf/panggil', ['operation_id' => (string) Str::uuid()])->assertRedirect();
+        $this->actingAs($staff)->post('/staf/panggil', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid()])->assertRedirect();
         $this->assertSame(TicketStatus::Called, $ticket->fresh()->status);
         $this->get('/staf')->assertOk()->assertSee('Konfirmasi hadir');
-        $this->post('/staf/tiket/'.$ticket->id.'/arrive', ['operation_id' => (string) Str::uuid()])->assertRedirect();
-        $this->post('/staf/tiket/'.$ticket->id.'/complete', ['operation_id' => (string) Str::uuid()])->assertRedirect();
+        $this->post('/staf/tiket/'.$ticket->id.'/arrive', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid()])->assertRedirect();
+        $this->post('/staf/tiket/'.$ticket->id.'/complete', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid()])->assertRedirect();
         $this->assertSame(TicketStatus::Completed, $ticket->fresh()->status);
         $this->assertSame(4, $ticket->events()->count());
         $this->get('/tiket/'.$token)->assertSee('Selamat menikmati!');
@@ -57,9 +58,9 @@ class QueueFlowTest extends TestCase
         $staff = $this->staff();
         $queue = app(QueueService::class);
         $op = (string) Str::uuid();
-        $this->assertSame($first->id, $queue->callNext($op, $staff->id)->id);
-        $this->assertSame($first->id, $queue->callNext($op, $staff->id)->id);
-        $this->assertSame($second->id, $queue->callNext((string) Str::uuid(), $staff->id)->id);
+        $this->assertSame($first->id, $queue->callNext($op, $staff->id, QueueType::DineIn)->id);
+        $this->assertSame($first->id, $queue->callNext($op, $staff->id, QueueType::DineIn)->id);
+        $this->assertSame($second->id, $queue->callNext((string) Str::uuid(), $staff->id, QueueType::DineIn)->id);
         $this->assertSame(2, QueueTicket::where('status', 'called')->count());
     }
 
@@ -68,9 +69,9 @@ class QueueFlowTest extends TestCase
         $staff = $this->staff();
         $queue = app(QueueService::class);
         $op = (string) Str::uuid();
-        $this->assertNull($queue->callNext($op, $staff->id));
+        $this->assertNull($queue->callNext($op, $staff->id, QueueType::DineIn));
         [$ticket] = $this->issue();
-        $this->assertNull($queue->callNext($op, $staff->id));
+        $this->assertNull($queue->callNext($op, $staff->id, QueueType::DineIn));
         $this->assertSame(TicketStatus::Waiting, $ticket->fresh()->status);
     }
 
@@ -78,10 +79,10 @@ class QueueFlowTest extends TestCase
     {
         [$ticket,$token,$op] = $this->issue();
         $queue = app(QueueService::class);
-        $this->assertSame($ticket->id, $queue->issue(['customer_name' => 'Pelanggan', 'party_size' => 2], $token, $op)->id);
+        $this->assertSame($ticket->id, $queue->issue(['queue_type' => 'dine_in', 'customer_name' => 'Pelanggan', 'party_size' => 2], $token, $op)->id);
         $this->assertSame(1, QueueTicket::count());
         $this->expectException(ValidationException::class);
-        $queue->issue(['customer_name' => 'Other', 'party_size' => 2], bin2hex(random_bytes(32)), $op);
+        $queue->issue(['queue_type' => 'dine_in', 'customer_name' => 'Other', 'party_size' => 2], bin2hex(random_bytes(32)), $op);
     }
 
     public function test_changed_cancel_reason_is_rejected_on_replay(): void
@@ -102,14 +103,14 @@ class QueueFlowTest extends TestCase
         [$c] = $this->issue();
         QueueSetting::find(1)->update(['estimate_interval_minutes' => 4]);
         $estimate = app(WaitEstimateService::class);
-        $this->assertSame(8, $estimate->snapshot($c)['estimate_minutes']);
+        $this->assertSame(8, $estimate->snapshot(QueueType::DineIn, $c)['estimate_minutes']);
         $staff = $this->staff();
         $queue = app(QueueService::class);
-        $queue->callNext((string) Str::uuid(), $staff->id);
+        $queue->callNext((string) Str::uuid(), $staff->id, QueueType::DineIn);
         $queue->transition($b, 'cancel', (string) Str::uuid(), null);
-        $this->assertSame(0, $estimate->snapshot($c)['ahead']);
-        $this->assertSame(0, $estimate->snapshot($c)['estimate_minutes']);
-        $this->assertNull($estimate->snapshot($a->fresh())['estimate_minutes']);
+        $this->assertSame(0, $estimate->snapshot(QueueType::DineIn, $c)['ahead']);
+        $this->assertSame(0, $estimate->snapshot(QueueType::DineIn, $c)['estimate_minutes']);
+        $this->assertNull($estimate->snapshot(QueueType::DineIn, $a->fresh())['estimate_minutes']);
     }
 
     public function test_no_show_is_manual_and_eligible_at_the_deadline(): void
@@ -118,7 +119,7 @@ class QueueFlowTest extends TestCase
         [$ticket,$token] = $this->issue();
         $staff = $this->staff();
         $queue = app(QueueService::class);
-        $ticket = $queue->callNext((string) Str::uuid(), $staff->id);
+        $ticket = $queue->callNext((string) Str::uuid(), $staff->id, QueueType::DineIn);
         try {
             $queue->transition($ticket, 'cancel', (string) Str::uuid(), $staff->id, 'no_show');
             $this->fail('Early cancellation accepted');
@@ -135,9 +136,9 @@ class QueueFlowTest extends TestCase
         [$ticket,$token] = $this->issue();
         $staff = $this->staff();
         $queue = app(QueueService::class);
-        $ticket = $queue->callNext((string) Str::uuid(), $staff->id);
+        $ticket = $queue->callNext((string) Str::uuid(), $staff->id, QueueType::DineIn);
         $queue->transition($ticket, 'arrive', (string) Str::uuid(), $staff->id);
-        $this->post('/tiket/'.$token.'/batalkan', ['operation_id' => (string) Str::uuid()])->assertSessionHasErrors('action');
+        $this->post('/tiket/'.$token.'/batalkan', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid()])->assertSessionHasErrors('action');
         $this->assertSame(TicketStatus::Arrived, $ticket->fresh()->status);
     }
 
@@ -157,7 +158,7 @@ class QueueFlowTest extends TestCase
 
     public function test_validation_and_staff_login_work(): void
     {
-        $this->post('/antrean', ['customer_name' => '', 'party_size' => 0, 'operation_id' => (string) Str::uuid(), 'access_token' => str_repeat('a', 64)])->assertSessionHasErrors(['customer_name', 'party_size']);
+        $this->post('/antrean', ['queue_type' => 'dine_in', 'customer_name' => '', 'party_size' => 0, 'operation_id' => (string) Str::uuid(), 'access_token' => str_repeat('a', 64)])->assertSessionHasErrors(['customer_name', 'party_size']);
         $this->assertArrayNotHasKey('access_token', session()->getOldInput());
         $staff = $this->staff();
         $this->post('/staf/masuk', ['email' => $staff->email, 'password' => 'wrong'])->assertSessionHasErrors('email');
@@ -175,7 +176,7 @@ class QueueFlowTest extends TestCase
         [$b] = $this->issue();
         $this->assertSame($a->number + 1, $b->number);
         $this->assertSame(TicketStatus::Waiting, $a->fresh()->status);
-        $this->assertNull(app(WaitEstimateService::class)->snapshot($b)['estimate_minutes']);
+        $this->assertNull(app(WaitEstimateService::class)->snapshot(QueueType::DineIn, $b)['estimate_minutes']);
     }
 
     public function test_illegal_staff_transition_and_foreign_operation_are_rejected(): void
@@ -185,10 +186,10 @@ class QueueFlowTest extends TestCase
         $other = $this->staff();
         $queue = app(QueueService::class);
         $op = (string) Str::uuid();
-        $this->actingAs($staff)->post('/staf/tiket/'.$a->id.'/complete', ['operation_id' => (string) Str::uuid()])->assertSessionHasErrors('action');
-        $queue->callNext($op, $staff->id);
+        $this->actingAs($staff)->post('/staf/tiket/'.$a->id.'/complete', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid()])->assertSessionHasErrors('action');
+        $queue->callNext($op, $staff->id, QueueType::DineIn);
         $this->expectException(ValidationException::class);
-        $queue->callNext($op, $other->id);
+        $queue->callNext($op, $other->id, QueueType::DineIn);
     }
 
     public function test_status_polling_does_not_exhaust_staff_login_limit(): void
@@ -207,10 +208,10 @@ class QueueFlowTest extends TestCase
             $this->issue();
         }
 
-        $response = $this->actingAs($this->staff())->get('/staf/status?q=Pelanggan&status=waiting')->assertOk();
+        $response = $this->actingAs($this->staff())->get('/staf/status?queue_type=dine_in&q=Pelanggan&status=waiting')->assertOk();
         $html = $response->json('html');
 
-        $this->assertStringContainsString(e(route('staff.index', ['q' => 'Pelanggan', 'status' => 'waiting', 'page' => 2])), $html);
+        $this->assertStringContainsString(e(route('staff.index', ['queue_type' => 'dine_in', 'q' => 'Pelanggan', 'status' => 'waiting', 'page' => 2])), $html);
         $this->assertStringNotContainsString('/staf/status?', $html);
     }
 }

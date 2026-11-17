@@ -1,6 +1,6 @@
 # Antrean Digital
 
-Aplikasi Project Based Learning (PBL) untuk mengelola antrean kunjungan saat ini pada satu restoran di Kuta. Dibangun menggunakan Laravel 13, PHP 8.3+, MySQL 8.4, Blade, CSS, dan JavaScript biasa. Aplikasi tidak memerlukan proses build atau server Node.js untuk menampilkan halaman.
+Aplikasi Project Based Learning (PBL) untuk mengelola dua antrean kunjungan pada satu restoran di Kuta: **Makan di Tempat** dan **Bawa Pulang**. Kedua antrean memiliki urutan, posisi, jumlah menunggu, panggilan, dan pengelolaan staf masing-masing. Dibangun menggunakan Laravel 13, PHP 8.3+, MySQL 8.4, Blade, CSS, dan JavaScript biasa. Aplikasi tidak memerlukan proses build atau server Node.js untuk menampilkan halaman.
 
 ## Menjalankan di komputer ini
 
@@ -12,6 +12,8 @@ cd D:\Git\PBL
 ```
 
 Buka [halaman pelanggan](http://127.0.0.1:8085/) atau [dasbor staf](http://127.0.0.1:8085/staf). Informasi login demo lokal tersimpan di `storage/local/demo-credentials.txt`, yang dikecualikan dari Git. Gunakan data buatan saat mencoba aplikasi.
+
+Untuk instalasi lama, jalankan `php artisan migrate` sebelum menggunakan versi dua antrean. Migration `2026_11_17_000001_add_queue_types` menambahkan jenis layanan ke tiket dan riwayat. Data antrean meja sebelumnya masuk Makan di Tempat; nomor, tautan privat, status, waktu, dan riwayatnya dipertahankan. Cadangkan database sebelum memperbarui instalasi lain. Rollback memerlukan penghentian sementara seluruh penulisan; migration menolak rollback apabila tiket atau riwayat Bawa Pulang masih ada agar klasifikasi layanan tidak hilang.
 
 MySQL khusus proyek menggunakan port 3311 dan menyimpan data di `storage/local/mysql`. Pengembangan, pengujian otomatis, dan pemeriksaan akses serentak menggunakan database terpisah: `pbl`, `pbl_testing`, dan `pbl_concurrency`. Skrip tidak mengubah database coursework maupun layanan XAMPP/Laragon lainnya. Lokasi executable khusus komputer ini tersimpan di `storage/local/runtime.json`.
 
@@ -41,7 +43,11 @@ Hasil pemeriksaan dan batas verifikasinya dicatat dalam [docs/verification.md](d
 
 ## Alur dan aturan antrean
 
-Nama pelanggan dan jumlah orang wajib diisi; nomor telepon bersifat opsional. Pelanggan menyimpan tautan pribadi menuju tiket antreannya. Staf memanggil pelanggan berdasarkan urutan masuk atau first-in, first-out (FIFO) ketika tempat tersedia, mengonfirmasi kedatangan, lalu menyelesaikan tiket setelah pelanggan diarahkan ke meja. Beberapa rombongan dapat dipanggil dan menunggu kedatangan secara bersamaan.
+Jenis layanan, nama pelanggan, dan jumlah orang wajib diisi; nomor telepon bersifat opsional. Pelanggan menyimpan tautan pribadi menuju tiket antreannya. Halaman tiket hanya menghitung posisi, perkiraan, dan panggilan pada layanan tiket tersebut. Staf memilih tab layanan, lalu memanggil berdasarkan urutan masuk atau first-in, first-out (FIFO) pada antrean itu. Panggilan atau perubahan tiket pada satu antrean tidak memajukan antrean lainnya.
+
+Kedua layanan mempertahankan tahap Menunggu → Dipanggil → Hadir → Selesai. Staf mengonfirmasi kedatangan sebelum menyelesaikan tiket. Pada Makan di Tempat, selesai berarti sudah diarahkan ke meja; Bawa Pulang menampilkan konfirmasi penyelesaian layanan oleh staf tanpa menambah tahap pemesanan/penyiapan baru. Beberapa pelanggan tetap dapat dipanggil dan menunggu kedatangan secara bersamaan.
+
+Nomor tetap memakai urutan global `A-…` tanpa reset, sehingga tiket lama tidak berubah; nomor yang diselingi layanan lain bukan posisi antrean. Konvensi nomor `M-…`/`B-…` pada Figma belum diterapkan sebagai aturan baru. Interval perkiraan dan batas hadir yang sudah ada tetap dipakai bersama; perhitungan jumlah di depan dan estimasi dipisahkan menurut layanan.
 
 Pembatalan atau tindakan melewati antrean mengakhiri tiket. Pelanggan yang kembali harus mengambil nomor baru.
 

@@ -1,4 +1,14 @@
-@php($tickets->withPath(route('staff.index')))
+@php($tickets->withPath(route('staff.index'))->appends(['queue_type' => $queueType->value]))
+<div class="queue-switcher">
+    <nav class="queue-tabs" aria-label="Jenis layanan">
+        @foreach($queueTypes as $type)
+            <a href="{{ route('staff.index', ['queue_type' => $type->value]) }}" class="queue-tab {{ $queueType === $type ? 'is-active' : '' }}" @if($queueType === $type) aria-current="page" @endif>
+                {{ $type->label() }} · {{ $queueCounts[$type->value] ?? 0 }} menunggu
+            </a>
+        @endforeach
+    </nav>
+    <small class="muted">Tampilan: {{ $queueType->label() }}</small>
+</div>
 <div class="metrics">
     @foreach(['waiting' => 'Menunggu', 'called' => 'Dipanggil', 'arrived' => 'Hadir', 'completed' => 'Selesai'] as $status => $label)
         <section class="metric metric-{{ $status }}">
@@ -11,7 +21,7 @@
 
 <section class="pending-section" aria-labelledby="pending-title">
     <div class="section-heading">
-        <h2 id="pending-title">Menunggu kedatangan / pengarahan</h2>
+        <h2 id="pending-title">{{ $queueType->label() }} · Menunggu kedatangan / layanan</h2>
         <span class="count-chip">{{ $pending->count() }} antrean</span>
     </div>
     <p class="muted">Setiap pelanggan yang dipanggil memiliki batas hadir sendiri.</p>
@@ -28,7 +38,7 @@
                         Dipanggil {{ $ticket->called_at->timezone('Asia/Makassar')->format('H.i') }} · batas hadir {{ $ticket->arrival_deadline->timezone('Asia/Makassar')->format('H.i') }} WITA
                         @if($ticket->arrival_deadline->isPast())<b class="danger-text"> · Batas terlewati</b>@endif
                     @else
-                        Hadir {{ $ticket->arrived_at->timezone('Asia/Makassar')->format('H.i') }} · arahkan ke meja
+                        Hadir {{ $ticket->arrived_at->timezone('Asia/Makassar')->format('H.i') }} · {{ $queueType === \App\Enums\QueueType::DineIn ? 'arahkan ke meja' : 'ikuti layanan Bawa Pulang' }}
                     @endif
                 </small>
             </div>
@@ -37,31 +47,33 @@
     @empty
         <div class="empty-state pending-empty">
             <strong>Belum ada pelanggan yang dipanggil</strong>
-            <p>Pelanggan yang dipanggil akan tampil di sini sampai diarahkan ke meja.</p>
+            <p>Pelanggan {{ $queueType->label() }} yang dipanggil akan tampil di sini sampai tiket diselesaikan.</p>
         </div>
     @endforelse
 </section>
 
 <section class="queue-list" aria-labelledby="queue-list-title">
     <div class="list-heading">
-        <div><h2 id="queue-list-title">Daftar antrean</h2><p class="muted section-copy">Urutan nomor mengikuti waktu pendaftaran.</p></div>
+        <div><h2 id="queue-list-title">Antrean {{ $queueType->label() }}</h2><p class="muted section-copy">Urutan mengikuti waktu pendaftaran pada layanan ini.</p></div>
         <div class="button-row">
-            <a class="button secondary" href="{{ route('staff.create') }}">+ Tambah antrean</a>
+            <a class="button secondary" href="{{ route('staff.create', ['queue_type' => $queueType->value]) }}">+ Tambah antrean</a>
             <form method="post" action="{{ route('staff.call') }}">
                 @csrf
+                <input type="hidden" name="queue_type" value="{{ $queueType->value }}">
                 <input type="hidden" name="operation_id" value="{{ $operation }}">
-                <button class="button" data-loading-label="Memanggil…" @disabled(($counts['waiting'] ?? 0) === 0)>Panggil berikutnya</button>
+                <button class="button" data-loading-label="Memanggil…" @disabled((int) ($counts['waiting'] ?? 0) === 0)>Panggil {{ $queueType->label() }}</button>
             </form>
         </div>
     </div>
-    @if(($counts['waiting'] ?? 0) === 0)
-        <p class="queue-empty-hint">Tidak ada pelanggan yang menunggu untuk dipanggil.</p>
+    @if((int) ($counts['waiting'] ?? 0) === 0)
+        <p class="queue-empty-hint">Tidak ada pelanggan {{ $queueType->label() }} yang menunggu untuk dipanggil.</p>
     @endif
 
     <form method="get" action="{{ route('staff.index') }}" class="filters">
+        <input type="hidden" name="queue_type" value="{{ $queueType->value }}">
         <div class="filter-search">
             <label for="search">Cari antrean</label>
-            <input id="search" name="q" value="{{ request('q') }}" placeholder="Nomor atau nama pelanggan" maxlength="120" type="search">
+            <input id="search" name="q" value="{{ request('q') }}" placeholder="Cari di antrean {{ $queueType->label() }}" maxlength="120" type="search">
         </div>
         <div class="filter-status">
             <label for="filter-status">Status</label>
@@ -74,7 +86,7 @@
         </div>
         <button class="button secondary">Terapkan</button>
         @if(request()->filled('q') || request()->filled('status'))
-            <a class="filter-reset" href="{{ route('staff.index') }}">Hapus filter</a>
+            <a class="filter-reset" href="{{ route('staff.index', ['queue_type' => $queueType->value]) }}">Hapus filter</a>
         @endif
     </form>
 
@@ -99,13 +111,13 @@
                     <tr class="empty-row"><td colspan="6" class="empty-state">
                         @if($tickets->total() > 0)
                             <strong>Halaman ini tidak memiliki antrean</strong>
-                            <p><a href="{{ route('staff.index', request()->only('q', 'status')) }}">Kembali ke halaman pertama</a></p>
+                            <p><a href="{{ route('staff.index', array_merge(request()->only('q', 'status'), ['queue_type' => $queueType->value])) }}">Kembali ke halaman pertama</a></p>
                         @elseif(request()->filled('q') || request()->filled('status'))
                             <strong>Tidak ada antrean yang cocok</strong>
-                            <p>Coba nama, nomor, atau status lainnya. <a href="{{ route('staff.index') }}">Hapus filter</a></p>
+                            <p>Coba nama, nomor, atau status lainnya. <a href="{{ route('staff.index', ['queue_type' => $queueType->value]) }}">Hapus filter</a></p>
                         @else
-                            <strong>Belum ada antrean</strong>
-                            <p>Antrean akan muncul setelah pelanggan mendaftar. Anda juga dapat <a href="{{ route('staff.create') }}">menambahkan pelanggan</a>.</p>
+                            <strong>Belum ada antrean {{ $queueType->label() }}</strong>
+                            <p>Antrean akan muncul setelah pelanggan mendaftar. Anda juga dapat <a href="{{ route('staff.create', ['queue_type' => $queueType->value]) }}">menambahkan pelanggan</a>.</p>
                         @endif
                     </td></tr>
                 @endforelse

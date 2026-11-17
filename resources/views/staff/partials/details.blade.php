@@ -1,6 +1,7 @@
 <details class="ticket-details" data-detail-id="{{ $ticket->id }}">
     <summary aria-label="Lihat detail {{ $ticket->displayNumber() }}">Lihat detail</summary>
     <dl>
+        <div><dt>Jenis layanan</dt><dd>{{ $ticket->queue_type->label() }}</dd></div>
         <div><dt>Nama</dt><dd>{{ $ticket->customer_name }}</dd></div>
         <div><dt>Jumlah orang</dt><dd>{{ $ticket->party_size }} orang</dd></div>
         <div><dt>Telepon</dt><dd>{{ $ticket->phone ?: 'Tidak diisi' }}</dd></div>

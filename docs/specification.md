@@ -1,5 +1,15 @@
 # Spesifikasi dan catatan keputusan
 
+## Dua antrean operasional — 17 November 2026
+
+Permintaan pengguna pada tugas ini mengizinkan perubahan backend, schema, dan antarmuka untuk memisahkan Makan di Tempat (`dine_in`) dan Bawa Pulang (`takeaway`). Registrasi harus memilih layanan; jenis tiket tetap melekat selama siklusnya. FIFO, posisi, jumlah menunggu, panggilan terakhir, daftar/pelanggan aktif, pencarian, paginasi, dan tindakan staf dibatasi pada layanan yang dipilih. Tautan privat menentukan jenis tiket pelanggan; parameter URL tidak dapat memindahkannya ke antrean lain.
+
+Pemisahan mempertahankan konvensi yang sudah berjalan: nomor global `A-…`, singleton settings/counter, interval ETA, batas hadir, serta Waiting → Called → Arrived → Completed. Data antrean meja lama dibaca sebagai Makan di Tempat tanpa mengubah nomor, hash akses, status, timestamp atau riwayat. Pada Bawa Pulang, antarmuka penyelesaian memakai teks netral layanan selesai oleh staf; tidak ditambahkan tahap penyiapan pesanan atau transisi langsung Called → Completed.
+
+Figma V2 menjadi referensi visual selector pelanggan, identitas layanan pada tiket dan tab staf. Nomor M/B, batas hadir take-out baru, perhitungan ETA adaptif, kuota, kapasitas, perpindahan jenis, beri giliran, serta emergency controls tidak menjadi bagian perubahan ini. Perbedaan tersebut tidak dianggap sebagai persetujuan aturan usulan. Pengaturan interval lama masih berlaku untuk kedua antrean; estimasi memakai jumlah Waiting pada layanan tiket, bukan seluruh restoran.
+
+Setiap event, termasuk panggilan kosong, menyimpan jenis antrean untuk menjaga retry tidak mengoperasikan layanan lain. Transaksi tetap memakai urutan kunci settings → tiket dan retry yang sudah ada. Schema baru bersifat tambahan; rollback ditolak jika data tiket atau event non-dine-in akan kehilangan klasifikasinya.
+
 ## Sumber dan prioritas
 
 D = `reference/Draf_Presentasi_PBL_3B4.pptx` (revisi terbaru yang diganti nama), P = proposal 19 halaman, R = rubrik Semester 3, F = https://www.figma.com/design/GOJY0SghUXI4vSI9ONw0e5/ . Presentasi mengatur lingkup fungsional, proposal melengkapi detail tanpa konflik, Figma mengatur visual, rubrik mengatur bukti penilaian. AGENTS mengatur cara kerja.

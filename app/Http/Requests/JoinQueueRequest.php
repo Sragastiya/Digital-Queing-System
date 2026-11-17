@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\QueueType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class JoinQueueRequest extends FormRequest
 {
@@ -14,7 +16,7 @@ class JoinQueueRequest extends FormRequest
     public function rules(): array
     {
         // 65535 is the storage limit, not a restaurant party-size policy.
-        return ['customer_name' => ['required', 'string', 'max:120'], 'party_size' => ['required', 'integer', 'min:1', 'max:65535'],
+        return ['queue_type' => ['required', Rule::enum(QueueType::class)], 'customer_name' => ['required', 'string', 'max:120'], 'party_size' => ['required', 'integer', 'min:1', 'max:65535'],
             'phone' => ['nullable', 'string', 'max:40'], 'operation_id' => ['required', 'uuid'], 'access_token' => ['required', 'regex:/^[a-f0-9]{64}$/']];
     }
 
@@ -26,6 +28,8 @@ class JoinQueueRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'queue_type.required' => 'Pilih jenis layanan terlebih dahulu.',
+            'queue_type.enum' => 'Pilih jenis layanan yang tersedia.',
             'customer_name.required' => 'Nama pelanggan wajib diisi.',
             'customer_name.string' => 'Nama pelanggan harus berupa teks.',
             'customer_name.max' => 'Nama pelanggan maksimal :max karakter.',

@@ -3,14 +3,16 @@
         @php($next = $ticket->status === \App\Enums\TicketStatus::Called ? 'arrive' : 'complete')
         <form method="post" action="{{ route('staff.transition', [$ticket, $next]) }}">
             @csrf
+            <input type="hidden" name="queue_type" value="{{ $ticket->queue_type->value }}">
             <input type="hidden" name="operation_id" value="{{ \Illuminate\Support\Str::uuid() }}">
             <button class="{{ $compact ? 'button' : 'text-button' }}" data-loading-label="Memperbarui…" aria-label="{{ $next === 'arrive' ? 'Konfirmasi hadir' : 'Tandai selesai' }} {{ $ticket->displayNumber() }}">{{ $next === 'arrive' ? 'Konfirmasi hadir' : 'Tandai selesai' }}</button>
         </form>
     @endif
 
     @if(!in_array($ticket->status, [\App\Enums\TicketStatus::Completed, \App\Enums\TicketStatus::Cancelled], true))
-        <form method="post" action="{{ route('staff.transition', [$ticket, 'cancel']) }}" data-confirm="Batalkan {{ $ticket->displayNumber() }}?" class="cancellation-action">
+        <form method="post" action="{{ route('staff.transition', [$ticket, 'cancel']) }}" data-confirm="Batalkan {{ $ticket->displayNumber() }} · {{ $ticket->queue_type->label() }}?" class="cancellation-action">
             @csrf
+            <input type="hidden" name="queue_type" value="{{ $ticket->queue_type->value }}">
             <input type="hidden" name="operation_id" value="{{ \Illuminate\Support\Str::uuid() }}">
             <label class="sr-only" for="reason-{{ $compact ? 'pending' : 'table' }}-{{ $ticket->id }}">Alasan pembatalan {{ $ticket->displayNumber() }}</label>
             <select name="reason" id="reason-{{ $compact ? 'pending' : 'table' }}-{{ $ticket->id }}">

@@ -6,8 +6,8 @@
     $steps = ['waiting' => 'Menunggu', 'called' => 'Dipanggil', 'arrived' => 'Hadir', 'completed' => 'Selesai'];
     $currentStep = array_search($ticket->status->value, array_keys($steps), true);
 @endphp
-<div data-ticket-poll="{{ route('ticket.status', ['token' => $token]) }}" data-status="{{ $ticket->status->value }}" data-terminal="{{ $isTerminal ? 'true' : 'false' }}">
-    <h1>Antrean kamu</h1>
+<div data-ticket-poll="{{ route('ticket.status', ['token' => $token]) }}" data-queue-type="{{ $ticket->queue_type->value }}" data-status="{{ $ticket->status->value }}" data-terminal="{{ $isTerminal ? 'true' : 'false' }}">
+    <h1>{{ $ticket->queue_type->label() }}</h1>
     <div class="refresh-row">
         <p class="refresh-state" id="refresh-state" role="status" aria-live="polite">{{ $isTerminal ? 'Proses antrean berakhir' : '● Diperbarui otomatis' }}</p>
         @unless($isTerminal)<button type="button" class="refresh-button" data-refresh>Perbarui</button>@endunless
@@ -15,7 +15,7 @@
 
     <section class="ticket-card {{ $ticket->status->value }}" aria-label="Tiket antrean {{ $ticket->displayNumber() }}">
         <span class="ticket-badge">{{ $ticket->status->label() }}</span>
-        <p class="eyebrow">NOMOR ANTREAN</p>
+        <p class="eyebrow">NOMOR ANTREAN · {{ $ticket->queue_type->label() }}</p>
         <strong class="ticket-number">{{ $ticket->displayNumber() }}</strong>
         <p class="ticket-person">{{ $ticket->customer_name }} · {{ $ticket->party_size }} orang</p>
         <div class="ticket-bottom">
@@ -37,7 +37,7 @@
 
     @if($ticket->status === \App\Enums\TicketStatus::Waiting)
         <section class="position-card" aria-label="Posisi dan perkiraan tunggu">
-            <div><strong data-ahead>{{ $snapshot['ahead'] }}</strong><small>antrean menunggu di depan</small></div>
+            <div><strong data-ahead>{{ $snapshot['ahead'] }}</strong><small>antrean layanan ini di depan</small></div>
             <div><strong data-estimate>{{ $snapshot['estimate_minutes'] === null ? 'Belum tersedia' : '± '.$snapshot['estimate_minutes'].' mnt' }}</strong><small>perkiraan tunggu</small></div>
         </section>
         <section class="status-guidance" aria-labelledby="near-title">
@@ -60,13 +60,13 @@
         <section class="arrival-card">
             <span class="eyebrow">SUDAH DI LOKASI</span>
             <h2>Kedatangan dikonfirmasi</h2>
-            <p>Ikuti arahan staf menuju meja. Nomor akan ditandai selesai setelah Anda diarahkan ke meja.</p>
+            <p>{{ $ticket->queue_type === \App\Enums\QueueType::DineIn ? 'Ikuti arahan staf menuju meja. Nomor akan ditandai selesai setelah Anda diarahkan ke meja.' : 'Ikuti arahan staf untuk layanan Bawa Pulang. Staf akan menandai tiket selesai setelah layanan selesai.' }}</p>
         </section>
     @elseif($ticket->status === \App\Enums\TicketStatus::Completed)
         <section class="arrival-card terminal-card">
             <span class="eyebrow">ANTREAN SELESAI</span>
-            <h2>Selamat menikmati!</h2>
-            <p>Anda sudah diarahkan ke meja. Proses antrean selesai.</p>
+            <h2>{{ $ticket->queue_type === \App\Enums\QueueType::DineIn ? 'Selamat menikmati!' : 'Layanan selesai' }}</h2>
+            <p>{{ $ticket->queue_type === \App\Enums\QueueType::DineIn ? 'Anda sudah diarahkan ke meja. Proses antrean selesai.' : 'Tiket Bawa Pulang telah ditandai selesai oleh staf. Proses antrean selesai.' }}</p>
             <a class="button secondary full" href="{{ route('home') }}">Kembali ke halaman awal</a>
         </section>
     @else
@@ -84,7 +84,7 @@
     <p class="ticket-issued">Terdaftar <time datetime="{{ $ticket->joined_at->toIso8601String() }}">{{ $ticket->joined_at->timezone('Asia/Makassar')->format('d/m/Y · H.i') }} WITA</time></p>
 
     @if(in_array($ticket->status, [\App\Enums\TicketStatus::Waiting, \App\Enums\TicketStatus::Called], true))
-        <form method="post" action="{{ route('ticket.cancel', ['token' => $token]) }}" data-confirm="Batalkan antrean {{ $ticket->displayNumber() }}?" class="cancel-ticket">
+        <form method="post" action="{{ route('ticket.cancel', ['token' => $token]) }}" data-confirm="Batalkan antrean {{ $ticket->queue_type->label() }} {{ $ticket->displayNumber() }}?" class="cancel-ticket">
             @csrf
             <input type="hidden" name="operation_id" value="{{ $operation }}">
             <button class="button secondary full" data-loading-label="Membatalkan antrean…">Batalkan antrean</button>

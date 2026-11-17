@@ -1,5 +1,17 @@
 # Verifikasi dan pekerjaan lanjutan
 
+## Dua antrean — pemeriksaan 17 November 2026
+
+- PHPUnit: **34 tests, 282 assertions**, lulus pada SQLite `:memory:` dan MySQL `pbl_testing`. Guard database tetap memeriksa koneksi yang sudah di-resolve sebelum RefreshDatabase.
+- Cakupan baru meliputi pemilihan layanan wajib, FIFO/posisi/count/ETA/panggilan terakhir per layanan, pengelolaan staf dan konteks tab, pencarian/paginasi setelah polling, pembatalan/skip/penyelesaian, dan penolakan operation_id yang digunakan silang antrean, termasuk panggilan kosong.
+- Migration diperiksa dengan data lama sintetis: nomor/hash akses/status/timestamp/event/counter dipertahankan; rollback menolak tiket Bawa Pulang maupun event panggilan kosong yang akan kehilangan jenisnya.
+- Migration tambahan juga diterapkan pada database lokal `pbl` setelah backup SQL tersimpan dan SHA-256 file backup diverifikasi. Server HTTP proyek tidak aktif dan tidak ada koneksi database proyek lain sebelum rollout; maintenance sementara dipulihkan setelah selesai. Seluruh field domain lama dari 5 tiket, 17 event dan 1 settings dibandingkan sebelum/sesudah dan identik. Backup serta laporan hash disimpan privat pada `storage/local/backups/` yang diabaikan Git.
+- MySQL `pbl_concurrency`: registrasi campuran serentak menghasilkan nomor global unik; FIFO satu layanan, panggilan silang layanan, replay operation_id, penolakan operation_id silang, serta replay panggilan kosong lulus. Runner memeriksa nama database pada proses induk dan worker sebelum menulis.
+- Browser menggunakan **aplikasi Laravel sebenarnya** dengan database SQLite khusus `*_testing`, session/login/CSRF dan POST asli, bukan halaman hasil render statis. Empat pelanggan mendaftar berselang-seling ke kedua layanan. Panggilan A-002 Bawa Pulang tidak mengubah status/posisi A-001/A-003 Makan di Tempat; kedua tab hanya menampilkan tiket layanannya. Kedatangan, selesai, skip staf dan pembatalan pelanggan dijalankan melalui antarmuka.
+- Selector keyboard (Space/ArrowRight) dan layout pelanggan 390 px serta staf 320/1366 px diperiksa tanpa overflow horizontal; aset pada halaman pelanggan termuat. Pemeriksaan JavaScript dan diff whitespace lulus. Referensi staf diperoleh dari design context Figma; selector/halaman pelanggan diperiksa langsung melalui browser saat kuota MCP habis.
+
+Nomor A global, settings bersama dan tahapan lama sengaja dipertahankan. Hasil ini tidak memvalidasi aturan operasional restoran, konvensi nomor M/B, ETA adaptif, kuota atau emergency controls, dan bukan uji beban produksi. Rollback MySQL hanya boleh dilakukan setelah seluruh penulisan dihentikan; pemeriksaan awal migration bukan penghalang terhadap penulis bersamaan selama DDL.
+
 ## Hasil awal
 
 - PHPUnit: 15 tests, 77 assertions, lulus pada SQLite awal dan MySQL khusus pbl_testing.

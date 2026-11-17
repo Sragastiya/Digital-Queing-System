@@ -2,7 +2,9 @@
 
 ## Arsitektur
 
-Browser -> Laravel routes/controllers/FormRequest -> QueueService / WaitEstimateService -> Eloquent -> MySQL/InnoDB. Blade melakukan escaping; JavaScript hanya stepper, dialog, polling, dan tampilan waktu. CSS/JS dilayani langsung dari public, tanpa build frontend atau SPA.
+Browser -> Laravel routes/controllers/FormRequest -> QueueService / WaitEstimateService -> Eloquent -> MySQL/InnoDB. Blade melakukan escaping; JavaScript mengelola pilihan layanan, stepper, dialog, polling, dan tampilan waktu. CSS/JS dilayani langsung dari public, tanpa build frontend atau SPA.
+
+`QueueType` membedakan `dine_in` dan `takeaway`. Query FIFO, snapshot dan daftar staf selalu dibatasi jenis layanan. Nomor tetap global dan singleton settings tetap menjadi mutex singkat untuk nomor serta operation_id; pemisahan alur layanan tidak mengubah urutan penguncian tersebut. Form staf membawa konteks layanan dan controller menolak tindakan yang tidak cocok dengan jenis tiket tersimpan.
 
 StaffAuthController mengelola session login/logout. CustomerQueueController memverifikasi hash tautan akses. StaffQueueController memerlukan auth. QueueService mengunci singleton settings sebelum mengubah nomor atau status; event ditulis dalam transaksi yang sama. operation_id unik memungkinkan retry mengembalikan hasil yang sama, termasuk hasil call kosong.
 
@@ -11,6 +13,7 @@ StaffAuthController mengelola session login/logout. CustomerQueueController memv
 ```mermaid
 classDiagram
 class QueueTicket {
+ +QueueType queue_type
  +int number
  +string customer_name
  +int party_size
@@ -30,6 +33,7 @@ class QueueSetting {
  +int near_turn_threshold
 }
 class QueueEvent {
+ +QueueType queue_type
  +string actor
  +string action
  +string operation_id
@@ -37,11 +41,11 @@ class QueueEvent {
 }
 class QueueService {
  +issue(data, token, operation, staff)
- +callNext(operation, staff)
+ +callNext(operation, staff, queueType)
  +transition(ticket, action, operation, staff, reason)
 }
 class WaitEstimateService {
- +snapshot(ticket) array
+ +snapshot(queueType, ticket) array
 }
 QueueTicket "0..1" --> "0..*" QueueEvent : records
 User "0..1" --> "0..*" QueueEvent : performs
@@ -74,6 +78,7 @@ QUEUE_SETTINGS {
 QUEUE_TICKETS {
  bigint id PK
  bigint number UK
+ varchar queue_type
  char access_token_hash UK
  varchar customer_name
  smallint party_size
@@ -93,6 +98,7 @@ QUEUE_EVENTS {
  bigint user_id FK "nullable for customer"
  varchar actor
  varchar action
+ varchar queue_type
  varchar from_status "nullable"
  varchar to_status "nullable"
  varchar reason "nullable"
@@ -101,7 +107,7 @@ QUEUE_EVENTS {
 }
 ```
 
-Migration adalah sumber tepat tipe, panjang, nullability dan constraint. Index (status, number) melayani FIFO. Tidak ada Customer/Restaurant tambahan tanpa kebutuhan akun atau multi-restoran. Tabel cache/jobs/session bawaan Laravel tidak menjadi entity domain. Singleton settings dibuat oleh migration.
+Migration adalah sumber tepat tipe, panjang, nullability dan constraint. Index (queue_type, status, number) melayani FIFO per layanan; unique number global tetap dipertahankan. Migration tambahan mengisi tiket/event lama dengan dine_in, termasuk event panggilan kosong. Tidak ada Customer/Restaurant tambahan tanpa kebutuhan akun atau multi-restoran. Tabel cache/jobs/session bawaan Laravel tidak menjadi entity domain. Singleton settings dibuat oleh migration.
 
 Lifecycle: Waiting -> Called -> Arrived -> Completed; Waiting/Called dapat dibatalkan pelanggan, staf dapat membatalkan state aktif dengan alasan yang diizinkan. Cancelled dan Completed terminal. No-show hanya Called pada/setelah deadline. ETA hanya untuk Waiting dan tidak menghitung Called.
 
@@ -113,6 +119,8 @@ Lifecycle: Waiting -> Called -> Arrived -> Completed; Waiting/Called dapat dibat
 - Staff add/call/settings/transitions are authenticated POST routes with CSRF.
 
 Figma join 5:37, waiting 5:81, dashboard 5:121, called 5:221, cancel 5:259, arrived 5:512. Reused visual tokens: ink #17324D, teal #087E8B, pale #E9F5F4, background #F5F8FA. Actual Figma icons are stored under public/design. Forms use semantic HTML, focus outlines, labelled controls, and native dialog confirmation. The dashboard supports several pending arrivals instead of one current-call slot.
+
+Pemisahan dua antrean mengikuti halaman V2 `39:2`: selector `39:19`/`39:72`/`39:125`, status pelanggan `39:178`/`39:309`, serta dasbor staf `35:129`/`35:234`. Komponen pilihan layanan default/selected `39:13`/`39:16` menjadi acuan kartu radio. Jumlah/status ditampilkan dari database, bukan data contoh Figma. Beberapa pending arrival, metrik Hadir, nomor A global dan statistik selesai sejak awal tetap mengikuti perilaku aplikasi yang sudah ada.
 
 ## Proteksi dan pengecualian
 

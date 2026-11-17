@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TicketStatus;
+use App\Enums\QueueType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -14,7 +15,7 @@ class QueueTicket extends Model
 
     protected function casts(): array
     {
-        return ['status' => TicketStatus::class, 'number' => 'integer', 'party_size' => 'integer',
+        return ['status' => TicketStatus::class, 'queue_type' => QueueType::class, 'number' => 'integer', 'party_size' => 'integer',
             'joined_at' => 'immutable_datetime', 'called_at' => 'immutable_datetime', 'arrival_deadline' => 'immutable_datetime',
             'arrived_at' => 'immutable_datetime', 'completed_at' => 'immutable_datetime', 'cancelled_at' => 'immutable_datetime'];
     }
