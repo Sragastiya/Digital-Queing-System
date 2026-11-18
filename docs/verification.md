@@ -1,5 +1,13 @@
 # Verifikasi dan pekerjaan lanjutan
 
+## Rekonsiliasi konteks — 18 November 2026
+
+- Working tree awal bersih pada commit `95422e1` (17 November). Kode, schema, rute, controller, formulir dan pengujian dibandingkan dengan rekaman implementasi di S-SPEC. Cakupan dua antrean sesuai; nomor A global, settings/interval/grace bersama dan lifecycle lama tetap dipertahankan.
+- Pemeriksaan baru: **15 tests, 174 assertions**, lulus memakai filter `(IndependentQueuesTest::test_(?!forward_migration|rollback)|TwoQueueHttpTest)` pada SQLite `:memory:`. Koneksi dipilih melalui environment proses dan guard membaca nama koneksi yang sudah di-resolve. Kasus mencakup FIFO/posisi/count/ETA/panggilan per layanan, jalur HTTP pelanggan/staf, penolakan tindakan/retry silang antrean dan panggilan kosong.
+- Tidak ada service yang dimulai/dihentikan, database persisten yang diuji, atau migration/rollback operasional yang dijalankan. Kasus migration/rollback sengaja tidak dipilih. Hasil MySQL, concurrency, rollout lokal dan browser tanggal 17 November di bawah dipakai sebagai bukti historis untuk commit yang sama, bukan hasil pemeriksaan baru. Keadaan database lokal saat ini dan live Figma tidak diperiksa ulang.
+- Perubahan hanya pada dokumentasi: availability proposal/U01, observasi historis D01, batas implementasi/U04, prioritas sumber S-SPEC/README dan discrepancy notes INDEX. Riwayat persetujuan, ID keputusan dan pertanyaan terbuka dipertahankan. Proposal revisi tidak dipromosikan menjadi persetujuan bisnis.
+- Handoff V2 lokal dan direktori verifikasinya tetap tidak tersedia. `AGENTS.md.bad` masih terlacak Git; tidak dibaca sebagai panduan, diubah atau dikeluarkan dari tracking dalam tugas ini.
+
 ## Dua antrean — pemeriksaan 17 November 2026
 
 - PHPUnit: **34 tests, 282 assertions**, lulus pada SQLite `:memory:` dan MySQL `pbl_testing`. Guard database tetap memeriksa koneksi yang sudah di-resolve sebelum RefreshDatabase.

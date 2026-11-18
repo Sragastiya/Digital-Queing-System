@@ -12,7 +12,11 @@ Setiap event, termasuk panggilan kosong, menyimpan jenis antrean untuk menjaga r
 
 ## Sumber dan prioritas
 
-D = `reference/Draf_Presentasi_PBL_3B4.pptx` (revisi terbaru yang diganti nama), P = proposal 19 halaman, R = rubrik Semester 3, F = https://www.figma.com/design/GOJY0SghUXI4vSI9ONw0e5/ . Presentasi mengatur lingkup fungsional, proposal melengkapi detail tanpa konflik, Figma mengatur visual, rubrik mengatur bukti penilaian. AGENTS mengatur cara kerja.
+Panduan kanonis berada di `D:\ChatGPT\Project Based Learning\AGENTS.md`; lokasi sumber mengikuti `INDEX.md` di direktori tersebut. Untuk lingkup yang berlaku, urutan kewenangan ialah instruksi pengguna/keputusan yang disetujui dengan provenance, perubahan penguji yang penerimaannya terbukti, revisi proposal/laporan yang secara eksplisit diterima atau ditetapkan, lalu referensi historis yang kompatibel. Rincian keputusan dan pertanyaan terbuka mengikuti `DECISIONS.md`. Tidak ada presentasi yang saat ini ditetapkan sebagai sumber otoritatif.
+
+INDEX mencatat S-PROP-REV (proposal revisi 29 halaman) sebagai sumber yang tersedia; penerimaan aturan spesifik dan cakupan penggantiannya belum ditetapkan. Keberadaannya tidak menyetujui seluruh usulan. Rubrik mengatur bukti penilaian; Figma menjadi referensi visual, bukan kewenangan aturan bisnis. Implementasi diverifikasi dari kode/schema dan pemeriksaan yang relevan.
+
+Pada tabel implementasi awal di bawah, D = presentasi historis `A\Draf_Presentasi_PBL_3B4.pptx`, P = proposal historis 19 halaman (`S-PROP`), R = rubrik Semester 3 (`S-RUBRIC`), F = referensi Figma dalam INDEX. A menunjuk direktori akademik kanonis di atas. Sitasi D/P dipertahankan sebagai provenance prototipe awal, bukan urutan kewenangan saat ini; jangan memulihkan direktori `reference/` yang sudah dipensiunkan.
 
 | Kebutuhan | Sumber | Implementasi awal |
 | --- | --- | --- |
@@ -28,13 +32,14 @@ D = `reference/Draf_Presentasi_PBL_3B4.pptx` (revisi terbaru yang diganti nama),
 
 ## Keputusan pengguna
 
-- Workspace dan root Laravel: `D:\Git\PBL`.
 - Nama/jumlah orang wajib; telepon opsional.
 - Beberapa pelanggan boleh Called sekaligus.
 - Completed berarti diarahkan ke meja, bukan selesai makan.
 - Skip berarti dikeluarkan; kembali memerlukan tiket baru.
 - ETA = jumlah Waiting di depan x interval konfigurasi. Tanpa interval, tampilkan belum tersedia.
 - November 3 menargetkan paket desain Stage 1; implementasi tidak menggantikan bukti pemodelan.
+
+Catatan cakupan historis: keputusan Completed sebagai diarahkan ke meja berasal dari prototipe antrean meja. Rekaman implementasi 17 November di atas mempertahankannya untuk Makan di Tempat dan memakai label layanan selesai oleh staf untuk Bawa Pulang, tetap melalui Arrived. Ini tidak menetapkan kapan pesanan Bawa Pulang dianggap diserahkan/diambil; detail operasional tersebut tetap terbuka pada U04. Keputusan awal dan riwayat persetujuannya tidak diganti oleh kecocokan dengan kode.
 
 ## Default teknis/usulan yang belum divalidasi restoran
 
@@ -48,11 +53,11 @@ D = `reference/Draf_Presentasi_PBL_3B4.pptx` (revisi terbaru yang diganti nama),
 
 ## Konflik dan validasi
 
-Proposal F2 menyebut nama+jumlah orang; prose menyebut nama+telepon. Figma menggabungkan keduanya. Pilihan pengguna menjadi baseline prototipe dan harus dibawa ke validasi stakeholder.
+Proposal historis S-PROP F2 menyebut nama+jumlah orang; prose menyebut nama+telepon. Figma menggabungkan keduanya. Pilihan pengguna menjadi baseline prototipe dan harus dibawa ke validasi stakeholder.
 
 Tanyakan narasumber tentang grace 15 menit, pelanggan yang terlambat, beberapa panggilan serentak, tujuan telepon, batas ukuran rombongan, interval ETA, ambang near-turn, dan kebijakan data sebelum penggunaan operasional. Observasi awal dilakukan saat sepi; jangan mengklaim perilaku jam puncak atau akurasi estimasi sudah terbukti.
 
-F9 bilingual, F10 buka/tutup antrean, F11 ringkasan per jam tetap backlog opsional. Tidak termasuk menu, pembayaran, reservasi jauh hari, integrasi kasir, banyak restoran, pemantauan meja otomatis, atau analitik lanjutan.
+F9 bilingual, F10 buka/tutup antrean, F11 ringkasan per jam dari proposal historis tetap backlog opsional pada prototipe. S-PROP-REV mengusulkan kuota/status layanan dan perubahan prioritas F10/F13, tetapi konflik tersebut belum ditetapkan sebagai perubahan keputusan; D02–D03/U05 tetap berlaku untuk emergency controls. Tidak termasuk menu, pembayaran, reservasi jauh hari, integrasi kasir, banyak restoran, pemantauan meja otomatis, atau analitik lanjutan.
 
 ## Tahap berikutnya
 
