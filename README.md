@@ -31,11 +31,15 @@ Semua perintah dijalankan dari folder utama proyek, yaitu folder yang berisi `ar
    php artisan migrate
    ```
 
-6. Buat akun staf untuk masuk ke dasbor. Ganti alamat contoh sesuai kebutuhan; masukkan kata sandi minimal 12 karakter melalui prompt tersembunyi.
+6. Buat akun staf untuk masuk ke dasbor dengan perintah berikut:
 
    ```powershell
    php artisan pbl:staff staff@example.test
    ```
+
+   `staff@example.test` adalah **contoh alamat email untuk login**, bukan kata sandi. Ganti dengan alamat email yang ingin digunakan.
+
+   **Kata sandi tidak ditulis dalam perintah.** Setelah perintah dijalankan, terminal meminta `Kata sandi baru (minimal 12 karakter)`. Ketik kata sandi pilihan Anda, lalu tekan Enter. Karakter yang diketik disembunyikan oleh terminal. Gunakan email dan kata sandi tersebut untuk masuk ke dasbor staf.
 
    Registrasi staf secara publik tidak tersedia. File login demo `storage/local/demo-credentials.txt` hanya ada pada instalasi demo yang sudah dikonfigurasi dan tidak disertakan dalam Git.
 
