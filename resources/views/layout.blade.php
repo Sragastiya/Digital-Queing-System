@@ -68,7 +68,11 @@
     <footer class="customer-footer">
         <p>Antrean untuk kunjungan saat ini</p>
         <small>Data pribadi tidak ditampilkan ke pelanggan lain.</small>
-        <a href="{{ route('login') }}">Masuk staf</a>
+        @auth
+            <a href="{{ route('staff.index') }}">Dasbor staf</a>
+        @else
+            <a href="{{ route('login') }}">Masuk staf</a>
+        @endauth
     </footer>
 @endif
 
