@@ -6,6 +6,8 @@ Browser -> Laravel routes/controllers/FormRequest -> QueueService / WaitEstimate
 
 `QueueType` membedakan `dine_in` dan `takeaway`. Query FIFO, snapshot dan daftar staf selalu dibatasi jenis layanan. Nomor tetap global dan singleton settings tetap menjadi mutex singkat untuk nomor serta operation_id; pemisahan alur layanan tidak mengubah urutan penguncian tersebut. Form staf membawa konteks layanan dan controller menolak tindakan yang tidak cocok dengan jenis tiket tersimpan.
 
+Pilihan pelanggan 18 November menambahkan `queue_order` terpisah dari nomor A yang tetap. Beri giliran merotasi slot urutan milik pemohon dan hingga tiga Waiting berikutnya; tidak ada penomoran ulang atau pengurutan pecahan. Pindah layanan membuat tiket baru di akhir antrean tujuan dan membatalkan tiket asal dalam transaksi yang sama. Event `switch_service.related_ticket_id` menjadi hubungan riwayat antara kedua tiket; event ini juga mencatat pembuatan tiket tujuan, tanpa event issue tambahan dengan operation_id lain.
+
 StaffAuthController mengelola session login/logout. CustomerQueueController memverifikasi hash tautan akses. StaffQueueController memerlukan auth. QueueService mengunci singleton settings sebelum mengubah nomor atau status; event ditulis dalam transaksi yang sama. operation_id unik memungkinkan retry mengembalikan hasil yang sama, termasuk hasil call kosong.
 
 ## Class diagram
@@ -15,6 +17,7 @@ classDiagram
 class QueueTicket {
  +QueueType queue_type
  +int number
+ +int queue_order
  +string customer_name
  +int party_size
  +string phone
@@ -38,16 +41,20 @@ class QueueEvent {
  +string action
  +string operation_id
  +string reason
+ +int related_ticket_id
 }
 class QueueService {
  +issue(data, token, operation, staff)
  +callNext(operation, staff, queueType)
  +transition(ticket, action, operation, staff, reason)
+ +giveTurn(ticket, operation)
+ +switchService(ticket, sourceToken, destination, operation)
 }
 class WaitEstimateService {
  +snapshot(queueType, ticket) array
 }
 QueueTicket "0..1" --> "0..*" QueueEvent : records
+QueueEvent "0..*" --> "0..1" QueueTicket : transferDestination
 User "0..1" --> "0..*" QueueEvent : performs
 QueueService --> QueueSetting : locks
 QueueService --> QueueTicket : changes
@@ -78,6 +85,7 @@ QUEUE_SETTINGS {
 QUEUE_TICKETS {
  bigint id PK
  bigint number UK
+ bigint queue_order
  varchar queue_type
  char access_token_hash UK
  varchar customer_name
@@ -95,6 +103,7 @@ QUEUE_TICKETS {
 QUEUE_EVENTS {
  bigint id PK
  bigint queue_ticket_id FK "nullable for empty call"
+ bigint related_ticket_id FK "nullable, transfer destination"
  bigint user_id FK "nullable for customer"
  varchar actor
  varchar action
@@ -107,7 +116,7 @@ QUEUE_EVENTS {
 }
 ```
 
-Migration adalah sumber tepat tipe, panjang, nullability dan constraint. Index (queue_type, status, number) melayani FIFO per layanan; unique number global tetap dipertahankan. Migration tambahan mengisi tiket/event lama dengan dine_in, termasuk event panggilan kosong. Tidak ada Customer/Restaurant tambahan tanpa kebutuhan akun atau multi-restoran. Tabel cache/jobs/session bawaan Laravel tidak menjadi entity domain. Singleton settings dibuat oleh migration.
+Migration adalah sumber tepat tipe, panjang, nullability dan constraint. Index (queue_type, status, queue_order, number) melayani urutan Waiting per layanan; unique number global tetap dipertahankan. Migration 17 November mengisi tiket/event lama dengan dine_in, termasuk event panggilan kosong. Migration 18 November mengisi queue_order dari number tanpa mengubah field domain lama, lalu menambahkan FK tujuan transfer. Slot urutan tidak diberi unique constraint karena rotasi bertahap terjadi di dalam transaksi dengan mutex bersama; seluruh penulis melalui QueueService. Rollback ditolak sebelum DDL jika tindakan beri giliran/transfer atau perubahan urutan sudah ada. Hentikan seluruh penulisan sebelum migration/rollback. Tidak ada Customer/Restaurant tambahan tanpa kebutuhan akun atau multi-restoran. Tabel cache/jobs/session bawaan Laravel tidak menjadi entity domain. Singleton settings dibuat oleh migration.
 
 Lifecycle: Waiting -> Called -> Arrived -> Completed; Waiting/Called dapat dibatalkan pelanggan, staf dapat membatalkan state aktif dengan alasan yang diizinkan. Cancelled dan Completed terminal. No-show hanya Called pada/setelah deadline. ETA hanya untuk Waiting dan tidak menghitung Called.
 
@@ -115,12 +124,18 @@ Lifecycle: Waiting -> Called -> Arrived -> Completed; Waiting/Called dapat dibat
 
 - `/`: registration; `/antrean` POST: issue.
 - `/tiket/{token}`: private status; `/status` suffix: safe JSON; `/batalkan` POST: confirmed cancellation.
+- Suffix `/pilihan` GET menyediakan pilihan tanpa JavaScript; `/ubah-layanan` POST menerima layanan tujuan; `/beri-giliran` POST menerima operation UUID. Token privat dan validasi status tetap wajib. `/batalkan` sekarang juga memerlukan alasan pelanggan yang valid.
 - `/staf/masuk`: login; `/staf`: dashboard; `/staf/status`: authenticated fragment polling.
+- `/staf/pengaturan/panggilan-otomatis` POST menyimpan pilihan untuk layanan yang dipilih. Kedua flag di `queue_settings` default nonaktif. Polling dasbor mengirim riwayat pembatalan Called oleh pelanggan dalam fragmen terpisah agar pemberitahuan bisa muncul saat filter sedang diedit.
 - Staff add/call/settings/transitions are authenticated POST routes with CSRF.
+
+QueueService memakai pengurutan dan batas hadir yang sama untuk panggilan manual maupun otomatis. Mutex settings dan operation UUID pembatalan mencegah panggilan ulang akibat retry. Saat ada panggilan otomatis, relasi `related_ticket_id` pada event pembatalan menunjuk tiket yang dipanggil dan ada event `auto_call` dengan aktor `system`. Rollback kolom relasi ditolak jika masih menyimpan tautan riwayat tersebut.
 
 Figma join 5:37, waiting 5:81, dashboard 5:121, called 5:221, cancel 5:259, arrived 5:512. Reused visual tokens: ink #17324D, teal #087E8B, pale #E9F5F4, background #F5F8FA. Actual Figma icons are stored under public/design. Forms use semantic HTML, focus outlines, labelled controls, and native dialog confirmation. The dashboard supports several pending arrivals instead of one current-call slot.
 
 Pemisahan dua antrean mengikuti halaman V2 `39:2`: selector `39:19`/`39:72`/`39:125`, status pelanggan `39:178`/`39:309`, serta dasbor staf `35:129`/`35:234`. Komponen pilihan layanan default/selected `39:13`/`39:16` menjadi acuan kartu radio. Jumlah/status ditampilkan dari database, bukan data contoh Figma. Beberapa pending arrival, metrik Hadir, nomor A global dan statistik selesai sejak awal tetap mengikuti perilaku aplikasi yang sudah ada.
+
+Pilihan F12 memperluas dialog pembatalan V2 `39:301`/`39:432` dengan Tetap di antrean, rincian pindah layanan, beri giliran dan pembatalan beralasan. UI menggunakan token warna, tombol, details, select dan dialog native yang sudah dipakai aplikasi. Modal pilihan dan halaman fallback memakai partial Blade yang sama; konfirmasi tetap terpisah agar tindakan/akibatnya jelas. Polling ditunda saat pilihan/konfirmasi terbuka, termasuk respons fetch yang sudah berjalan. Update canvas V2 dan pemeriksaan visual/interaksi browser masih terhalang akses alat; ini rancangan aplikasi tambahan, bukan klaim kesesuaian dengan layout F12 Figma yang sudah terverifikasi.
 
 ## Proteksi dan pengecualian
 
@@ -133,7 +148,9 @@ No public staff registration. Customer token 256-bit, SHA-256 stored, no sequent
 | --- | --- | --- | --- |
 | Ambil nomor | Pelanggan, halaman registrasi | Isi nama/jumlah orang, telepon opsional; kirim; sistem memberikan tiket | Isian tidak valid ditolak; retry tidak membuat tiket kedua |
 | Pantau antrean | Pemegang tautan privat | Buka tiket; lihat posisi/status; polling memperbarui informasi | Link invalid 404; koneksi gagal menampilkan status stale |
-| Batalkan sendiri | Pelanggan, Waiting/Called | Pilih batal; konfirmasi; nomor keluar dari antrean | Cancelled terminal; kembali harus ambil nomor baru |
+| Batalkan sendiri | Pelanggan, Waiting/Called | Buka pilihan; pilih alasan; konfirmasi; nomor keluar dari antrean | Alasan wajib; Cancelled terminal; kembali harus ambil nomor baru |
+| Pindah layanan | Pelanggan, Waiting | Konfirmasi tujuan/nomor baru; tiket asal ditutup dan tiket baru dibuat atomik | Tujuan harus berbeda; retry mengembalikan tautan pengganti yang sama; Called ditolak |
+| Beri giliran | Pelanggan, Waiting | Konfirmasi; lewati hingga tiga Waiting berikutnya pada layanan yang sama | Jika sudah terakhir, penjelasan tanpa perubahan; nomor tetap, retry tidak memindahkan dua kali |
 | Masuk/keluar | Staf dengan akun yang diprovisikan | Login, session baru; logout mengakhiri session | Kredensial salah ditolak; rate limit terpisah dari polling |
 | Tambah pelanggan | Staf login | Isi form yang sama; sistem menambahkan di akhir FIFO | Validasi dan duplicate-submit sama dengan pelanggan |
 | Panggil berikutnya | Staf login, tempat tersedia menurut staf | Sistem mengunci queue, mengambil Waiting paling awal, menyimpan Called dan deadline | Empty result aman untuk retry; Called sebelumnya tetap berlaku |

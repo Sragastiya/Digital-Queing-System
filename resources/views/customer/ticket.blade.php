@@ -72,28 +72,35 @@
     @else
         <section class="arrival-card terminal-card cancelled-guidance">
             <span class="eyebrow">NOMOR TIDAK AKTIF</span>
-            <h2>Antrean telah dibatalkan</h2>
+            <h2>{{ $replacement ? 'Sudah pindah layanan' : 'Antrean telah dibatalkan' }}</h2>
             @if($ticket->cancellation_reason)
-                <p>{{ ['customer' => 'Antrean dibatalkan oleh pelanggan.', 'staff' => 'Antrean dibatalkan oleh staf.', 'skipped' => 'Staf melewati nomor ini.', 'no_show' => 'Staf membatalkan karena batas hadir terlewati.'][$ticket->cancellation_reason] ?? 'Nomor ini tidak lagi aktif.' }}</p>
+                @php($customerReason = \App\Enums\CustomerCancellationReason::tryFrom($ticket->cancellation_reason))
+                <p>{{ $customerReason ? 'Alasan pembatalan: '.$customerReason->label().'.' : (['customer' => 'Antrean dibatalkan oleh pelanggan.', 'staff' => 'Antrean dibatalkan oleh staf.', 'skipped' => 'Staf melewati nomor ini.', 'no_show' => 'Staf membatalkan karena batas hadir terlewati.', 'service_switch' => 'Nomor lama dinonaktifkan karena pindah layanan.'][$ticket->cancellation_reason] ?? 'Nomor ini tidak lagi aktif.') }}</p>
             @endif
-            <p>Nomor ini sudah keluar dari antrean. Untuk kembali, ambil nomor baru.</p>
-            <a class="button full" href="{{ route('home') }}">Ambil nomor baru</a>
+            @if($replacement)
+                <p>Gunakan tiket {{ $replacement['ticket']->displayNumber() }} untuk {{ $replacement['ticket']->queue_type->label() }}. Posisi dan status terbaru ada pada tiket tersebut.</p>
+                <a class="button full" href="{{ $replacement['url'] }}">Buka tiket {{ $replacement['ticket']->displayNumber() }}</a>
+            @else
+                <p>Nomor ini sudah keluar dari antrean. Untuk kembali, ambil nomor baru.</p>
+                <a class="button full" href="{{ route('home') }}">Ambil nomor baru</a>
+            @endif
         </section>
     @endif
 
     <p class="ticket-issued">Terdaftar <time datetime="{{ $ticket->joined_at->toIso8601String() }}">{{ $ticket->joined_at->timezone('Asia/Makassar')->format('d/m/Y · H.i') }} WITA</time></p>
 
     @if(in_array($ticket->status, [\App\Enums\TicketStatus::Waiting, \App\Enums\TicketStatus::Called], true))
-        <form method="post" action="{{ route('ticket.cancel', ['token' => $token]) }}" data-confirm="Batalkan antrean {{ $ticket->queue_type->label() }} {{ $ticket->displayNumber() }}?" class="cancel-ticket">
-            @csrf
-            <input type="hidden" name="operation_id" value="{{ $operation }}">
-            <button class="button secondary full" data-loading-label="Membatalkan antrean…">Batalkan antrean</button>
-        </form>
+        <div class="cancel-ticket">
+            <a class="button secondary full" href="{{ route('ticket.options', ['token' => $token]) }}" data-open-options>Ubah atau batalkan antrean</a>
+        </div>
+        <dialog id="ticket-options-dialog" aria-labelledby="ticket-options-title">
+            @include('customer.partials.options')
+        </dialog>
     @endif
 
     <details class="ticket-help">
         <summary>Simpan akses antrean</summary>
-        <p>Simpan halaman ini sebagai bookmark. Tautan ini bersifat pribadi; siapa pun yang memilikinya dapat melihat atau membatalkan tiket Anda.</p>
+        <p>Simpan halaman ini sebagai bookmark. Tautan ini bersifat pribadi; siapa pun yang memilikinya dapat melihat dan mengubah tiket Anda. Setelah pindah layanan, simpan tautan tiket baru.</p>
     </details>
     <noscript><p class="notice">Pembaruan otomatis memerlukan JavaScript. Muat ulang halaman untuk memeriksa status terbaru.</p></noscript>
 </div>

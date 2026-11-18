@@ -18,7 +18,7 @@ class WaitEstimateService
         $settings = QueueSetting::findOrFail(1);
         $waiting = QueueTicket::where('queue_type', $queueType->value)->where('status', TicketStatus::Waiting);
         $count = (clone $waiting)->count();
-        $ahead = $ticket && $ticket->status === TicketStatus::Waiting ? (clone $waiting)->where('number', '<', $ticket->number)->count() : null;
+        $ahead = $ticket && $ticket->status === TicketStatus::Waiting ? (clone $waiting)->where('queue_order', '<', $ticket->queue_order)->count() : null;
         $latest = QueueTicket::where('queue_type', $queueType->value)->whereNotNull('called_at')->orderByDesc('called_at')->orderByDesc('number')->first();
 
         return ['queue_type' => $queueType->value, 'queue_label' => $queueType->label(), 'waiting_count' => $count, 'ahead' => $ahead,

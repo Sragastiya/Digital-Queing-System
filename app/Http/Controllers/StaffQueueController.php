@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Enums\QueueType;
+use App\Enums\TicketStatus;
 use App\Http\Requests\JoinQueueRequest;
+use App\Models\QueueEvent;
 use App\Models\QueueSetting;
 use App\Models\QueueTicket;
 use App\Services\QueueService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -14,6 +17,15 @@ use Illuminate\Validation\ValidationException;
 
 class StaffQueueController extends Controller
 {
+    private function recentCalledCancellations(): Collection
+    {
+        // Staff need to see these even when viewing the other service or filtering the list.
+        return QueueEvent::query()->where('actor', 'customer')->where('action', 'cancel')
+            ->where('from_status', TicketStatus::Called->value)->where('to_status', TicketStatus::Cancelled->value)
+            ->whereNotNull('queue_ticket_id')
+            ->with(['ticket:id,number', 'relatedTicket:id,number'])->latest('id')->limit(5)->get();
+    }
+
     private function data(Request $request): array
     {
         $filter = $request->validate(['queue_type' => ['nullable', Rule::enum(QueueType::class)], 'q' => ['nullable', 'string', 'max:120'], 'status' => ['nullable', 'in:waiting,called,arrived,completed,cancelled']], [
@@ -34,7 +46,7 @@ class StaffQueueController extends Controller
         $counts = (clone $queueQuery)->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status');
         $queueCounts = QueueTicket::where('status', 'waiting')->selectRaw('queue_type, COUNT(*) AS total')->groupBy('queue_type')->pluck('total', 'queue_type');
 
-        return ['tickets' => $query->orderBy('number')->paginate(15)->withQueryString(),
+        return ['tickets' => $query->orderBy('queue_order')->orderBy('number')->paginate(15)->withQueryString(),
             'pending' => (clone $queueQuery)->whereIn('status', ['called', 'arrived'])->orderBy('number')->get(),
             'counts' => $counts, 'queueCounts' => $queueCounts, 'queueType' => $queueType, 'queueTypes' => QueueType::cases(),
             'settings' => QueueSetting::findOrFail(1), 'operation' => (string) Str::uuid()];
@@ -42,14 +54,22 @@ class StaffQueueController extends Controller
 
     public function index(Request $request)
     {
-        return response()->view('staff.dashboard', $this->data($request))->header('Cache-Control', 'no-store, private');
+        return response()->view('staff.dashboard', $this->data($request) + [
+            'calledCancellations' => $this->recentCalledCancellations(),
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     public function poll(Request $request)
     {
         $data = $this->data($request);
+        $cancellations = $this->recentCalledCancellations();
 
-        return response()->json(['queue_type' => $data['queueType']->value, 'html' => view('staff.partials.board', $data)->render()])->header('Cache-Control', 'no-store, private');
+        return response()->json([
+            'queue_type' => $data['queueType']->value,
+            'html' => view('staff.partials.board', $data)->render(),
+            'cancellations_html' => view('staff.partials.cancellation-notices', ['calledCancellations' => $cancellations])->render(),
+            'latest_cancellation_id' => $cancellations->first()?->id,
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     public function create(Request $request)
@@ -103,5 +123,28 @@ class StaffQueueController extends Controller
         QueueSetting::findOrFail(1)->update(['estimate_interval_minutes' => $data['estimate_interval_minutes'] ?? null]);
 
         return redirect()->route('staff.index', ['queue_type' => $data['queue_type'] ?? QueueType::DineIn->value])->with('notice', 'Perkiraan tunggu diperbarui untuk kedua antrean. Nilai ini masih perlu validasi operasional.');
+    }
+
+    public function autoCallSettings(Request $request)
+    {
+        $data = $request->validate([
+            'queue_type' => ['required', Rule::enum(QueueType::class)],
+            'enabled' => ['required', 'boolean'],
+        ], [
+            'queue_type.required' => 'Pilih jenis layanan.',
+            'queue_type.enum' => 'Pilih jenis layanan yang tersedia.',
+            'enabled.required' => 'Pilih status panggilan otomatis.',
+            'enabled.boolean' => 'Pilih status panggilan otomatis yang tersedia.',
+        ]);
+        $queueType = QueueType::from($data['queue_type']);
+        $settings = QueueSetting::findOrFail(1);
+        if (! $settings->autoCallAvailable($queueType)) {
+            throw ValidationException::withMessages(['enabled' => 'Panggilan otomatis belum tersedia pada instalasi ini.']);
+        }
+        $enabled = $request->boolean('enabled');
+        $settings->update([QueueSetting::autoCallAttribute($queueType) => $enabled]);
+
+        return redirect()->route('staff.index', ['queue_type' => $queueType->value])
+            ->with('notice', 'Panggilan otomatis '.$queueType->label().($enabled ? ' diaktifkan.' : ' dinonaktifkan.'));
     }
 }

@@ -11,7 +11,8 @@
             @endif
         @endforeach
         @if($ticket->cancellation_reason)
-            <div><dt>Alasan</dt><dd>{{ ['customer' => 'Dibatalkan pelanggan', 'staff' => 'Dibatalkan staf', 'skipped' => 'Dilewati, keluar antrean', 'no_show' => 'Tidak hadir melewati batas'][$ticket->cancellation_reason] ?? 'Dibatalkan' }}</dd></div>
+            @php($customerReason = \App\Enums\CustomerCancellationReason::tryFrom($ticket->cancellation_reason))
+            <div><dt>Alasan</dt><dd>{{ $customerReason?->label() ?? (['customer' => 'Dibatalkan pelanggan', 'staff' => 'Dibatalkan staf', 'skipped' => 'Dilewati, keluar antrean', 'no_show' => 'Tidak hadir melewati batas', 'service_switch' => 'Pindah layanan; nomor baru'][$ticket->cancellation_reason] ?? 'Dibatalkan') }}</dd></div>
         @endif
     </dl>
 </details>

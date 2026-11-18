@@ -12,6 +12,12 @@
         <p class="refresh-state" id="refresh-state" role="status" aria-live="polite">● Diperbarui otomatis</p>
         <button type="button" class="refresh-button" data-refresh>Perbarui</button>
     </div>
+    <section class="staff-cancellations" aria-labelledby="staff-cancellations-title">
+        <h2 id="staff-cancellations-title">Pembatalan setelah dipanggil</h2>
+        <div data-staff-cancellations data-latest-id="{{ $calledCancellations->first()?->id }}" aria-live="polite">
+            @include('staff.partials.cancellation-notices')
+        </div>
+    </section>
     <div id="staff-board" data-queue-type="{{ $queueType->value }}" data-staff-poll="{{ route('staff.poll', array_merge(request()->only('q', 'status', 'page'), ['queue_type' => $queueType->value])) }}">
         @include('staff.partials.board')
     </div>
@@ -28,5 +34,22 @@
             <button class="button" data-loading-label="Menyimpan…">Simpan perkiraan</button>
         </form>
     </details>
+    @if($settings->autoCallAvailable($queueType))
+        <details class="settings-panel" @if($errors->has('enabled')) open @endif>
+            <summary>Panggilan otomatis · {{ $queueType->label() }}</summary>
+            <p class="muted" id="auto-call-help">Saat pelanggan yang sudah dipanggil membatalkan sendiri, sistem akan memanggil satu pelanggan berikutnya jika ada yang menunggu di layanan ini.</p>
+            <form method="post" action="{{ route('staff.settings.auto-call') }}">
+                @csrf
+                <input type="hidden" name="queue_type" value="{{ $queueType->value }}">
+                <label for="auto-call-enabled">Panggilan setelah pembatalan</label>
+                <select id="auto-call-enabled" name="enabled" aria-describedby="auto-call-help{{ $errors->has('enabled') ? ' auto-call-error' : '' }}" @error('enabled') aria-invalid="true" @enderror>
+                    <option value="0" @selected(!old('enabled', $settings->autoCallEnabled($queueType)))>Nonaktif</option>
+                    <option value="1" @selected(old('enabled', $settings->autoCallEnabled($queueType)))>Aktif</option>
+                </select>
+                @error('enabled')<p class="field-error" id="auto-call-error">{{ $message }}</p>@enderror
+                <button class="button" data-loading-label="Menyimpan…">Simpan panggilan otomatis</button>
+            </form>
+        </details>
+    @endif
     <noscript><p class="notice">Muat ulang halaman untuk melihat status antrean terbaru.</p></noscript>
 @endsection

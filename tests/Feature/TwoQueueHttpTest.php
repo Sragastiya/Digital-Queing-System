@@ -80,7 +80,7 @@ class TwoQueueHttpTest extends TestCase
         [$takeNext, $takeNextToken] = $this->issue(QueueType::Takeaway, 'Take kedua');
         $this->get('/tiket/'.$dineNextToken.'/status')->assertJsonPath('snapshot.ahead', 1)->assertJsonPath('snapshot.waiting_count', 2);
         $this->get('/tiket/'.$takeNextToken.'/status')->assertJsonPath('snapshot.ahead', 1)->assertJsonPath('snapshot.waiting_count', 2);
-        $this->post('/tiket/'.$takeToken.'/batalkan', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid()])->assertRedirect();
+        $this->post('/tiket/'.$takeToken.'/batalkan', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid(), 'reason' => 'plans_changed'])->assertRedirect();
         $this->assertSame(TicketStatus::Cancelled, $takeFirst->fresh()->status);
         $this->get('/tiket/'.$dineNextToken.'/status')->assertJsonPath('snapshot.ahead', 1)->assertJsonPath('snapshot.waiting_count', 2);
         $this->get('/tiket/'.$takeNextToken.'/status')->assertJsonPath('snapshot.ahead', 0)->assertJsonPath('snapshot.waiting_count', 1);

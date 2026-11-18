@@ -84,6 +84,10 @@ Cadangkan database sebelum menerapkan perubahan schema. Setelah memperbarui kode
 
 Untuk pembaruan dari versi satu antrean, migration `2026_11_17_000001_add_queue_types` menambahkan jenis layanan ke tiket dan riwayat. Data antrean meja sebelumnya masuk Makan di Tempat; nomor, tautan privat, status, waktu, dan riwayatnya dipertahankan. Rollback memerlukan penghentian sementara seluruh penulisan; migration menolak rollback apabila tiket atau riwayat Bawa Pulang masih ada agar klasifikasi layanan tidak hilang.
 
+Pembaruan pilihan pelanggan memakai migration `2026_11_18_000001_add_customer_queue_options`. Setelah backup dan penghentian sementara seluruh penulisan, jalankan `php artisan migrate` sebelum menggunakan kode baru. Migration menambahkan urutan antrean terpisah dan hubungan tiket pengganti tanpa mengubah nomor, status, waktu, hash akses atau riwayat lama. Rollback ditolak jika beri giliran/perpindahan layanan sudah digunakan karena urutan dan hubungan riwayat harus dipertahankan.
+
+Migration `2026_11_18_000002_add_auto_call_settings` menambahkan pengaturan panggilan otomatis untuk kedua layanan. Setelah migration, pengaturan awal keduanya **Nonaktif**. Pemberitahuan pembatalan memakai riwayat yang tersedia dan dapat tampil sebelum migration pengaturan ini.
+
 ## Verifikasi
 
 Bagian ini untuk pengembangan dan pengujian, bukan langkah wajib setiap kali menjalankan aplikasi. Siapkan database pengujian terpisah, salin konfigurasi `.env` menjadi `.env.testing`, lalu sesuaikan `APP_ENV=testing`, `DB_DATABASE`, dan kredensialnya. Nama database pengujian harus berakhiran `_testing`. Pengujian menggunakan `RefreshDatabase`; jangan mengarahkannya ke database operasional.
@@ -100,13 +104,17 @@ Hasil pemeriksaan dan batas verifikasinya dicatat dalam [docs/verification.md](d
 
 ## Alur dan aturan antrean
 
-Jenis layanan, nama pelanggan, dan jumlah orang wajib diisi; nomor telepon bersifat opsional. Pelanggan menyimpan tautan pribadi menuju tiket antreannya. Halaman tiket hanya menghitung posisi, perkiraan, dan panggilan pada layanan tiket tersebut. Staf memilih tab layanan, lalu memanggil berdasarkan urutan masuk atau first-in, first-out (FIFO) pada antrean itu. Panggilan atau perubahan tiket pada satu antrean tidak memajukan antrean lainnya.
+Jenis layanan, nama pelanggan, dan jumlah orang wajib diisi; nomor telepon bersifat opsional. Pelanggan menyimpan tautan pribadi menuju tiket antreannya. Halaman tiket hanya menghitung posisi, perkiraan, dan panggilan pada layanan tiket tersebut. Staf memilih tab layanan, lalu memanggil menurut urutan antrean saat ini: urutan masuk, dengan penyesuaian jika pelanggan memberi giliran. Panggilan pada satu antrean tidak memajukan antrean lainnya.
 
 Kedua layanan mempertahankan tahap Menunggu → Dipanggil → Hadir → Selesai. Staf mengonfirmasi kedatangan sebelum menyelesaikan tiket. Pada Makan di Tempat, selesai berarti sudah diarahkan ke meja; Bawa Pulang menampilkan konfirmasi penyelesaian layanan oleh staf tanpa menambah tahap pemesanan/penyiapan baru. Beberapa pelanggan tetap dapat dipanggil dan menunggu kedatangan secara bersamaan.
 
 Nomor tetap memakai urutan global `A-…` tanpa reset, sehingga tiket lama tidak berubah; nomor yang diselingi layanan lain bukan posisi antrean. Konvensi nomor `M-…`/`B-…` pada Figma belum diterapkan sebagai aturan baru. Interval perkiraan dan batas hadir yang sudah ada tetap dipakai bersama; perhitungan jumlah di depan dan estimasi dipisahkan menurut layanan.
 
 Pembatalan atau tindakan melewati antrean mengakhiri tiket. Pelanggan yang kembali harus mengambil nomor baru.
+
+Jika pelanggan membatalkan tiketnya setelah dipanggil, dasbor staf menampilkan pemberitahuan terbaru dari kedua layanan, termasuk nomor tiket, layanan dan waktu pembatalan. Untuk mengaktifkan **Panggilan otomatis**, pilih tab layanan, buka pengaturannya, pilih **Aktif**, lalu simpan. Sistem akan memanggil satu tiket berikutnya yang sedang menunggu di layanan tersebut dan mencantumkan nomornya pada pemberitahuan. Jika antrean kosong saat pembatalan, staf tetap memanggil pendaftar berikutnya secara manual.
+
+Pada **Ubah atau batalkan antrean**, pelanggan dapat tetap menunggu, pindah layanan, memberi giliran atau membatalkan dengan alasan. Pindah/beri giliran hanya tersedia saat Menunggu; pembatalan juga tersedia saat Dipanggil. Pindah layanan menutup nomor lama dan membuat nomor baru di akhir antrean tujuan; simpan tautan tiket baru. Beri giliran memundurkan posisi di belakang hingga tiga pelanggan yang masih menunggu dalam layanan yang sama, tanpa mengganti nomor. Jika kurang dari tiga, pindah ke akhir; jika tidak ada, posisi tidak berubah. Tindakan ini dapat dikonfirmasi lagi, sedangkan pengiriman ulang permintaan yang sama tidak memindahkan dua kali.
 
 Batas kedatangan 15 menit merupakan **aturan usulan yang masih perlu divalidasi**. Sistem menandai tiket yang melewati batas waktu, sedangkan staf menentukan pembatalannya. Perkiraan waktu tunggu belum tersedia sampai interval dikonfigurasi melalui dasbor. Nilai waktu tersebut perlu divalidasi bersama pihak restoran.
 

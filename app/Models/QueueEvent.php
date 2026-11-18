@@ -26,4 +26,9 @@ class QueueEvent extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function relatedTicket(): BelongsTo
+    {
+        return $this->belongsTo(QueueTicket::class, 'related_ticket_id');
+    }
 }

@@ -107,7 +107,7 @@ class QueueFlowTest extends TestCase
         $staff = $this->staff();
         $queue = app(QueueService::class);
         $queue->callNext((string) Str::uuid(), $staff->id, QueueType::DineIn);
-        $queue->transition($b, 'cancel', (string) Str::uuid(), null);
+        $queue->transition($b, 'cancel', (string) Str::uuid(), null, 'plans_changed');
         $this->assertSame(0, $estimate->snapshot(QueueType::DineIn, $c)['ahead']);
         $this->assertSame(0, $estimate->snapshot(QueueType::DineIn, $c)['estimate_minutes']);
         $this->assertNull($estimate->snapshot(QueueType::DineIn, $a->fresh())['estimate_minutes']);
@@ -138,7 +138,7 @@ class QueueFlowTest extends TestCase
         $queue = app(QueueService::class);
         $ticket = $queue->callNext((string) Str::uuid(), $staff->id, QueueType::DineIn);
         $queue->transition($ticket, 'arrive', (string) Str::uuid(), $staff->id);
-        $this->post('/tiket/'.$token.'/batalkan', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid()])->assertSessionHasErrors('action');
+        $this->post('/tiket/'.$token.'/batalkan', ['queue_type' => 'dine_in', 'operation_id' => (string) Str::uuid(), 'reason' => 'plans_changed'])->assertSessionHasErrors('action');
         $this->assertSame(TicketStatus::Arrived, $ticket->fresh()->status);
     }
 

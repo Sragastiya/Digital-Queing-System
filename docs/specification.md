@@ -1,5 +1,26 @@
 # Spesifikasi dan catatan keputusan
 
+## Pemberitahuan pembatalan dan panggilan otomatis — 18 November 2026
+
+Pengguna menyetujui D05. Dasbor menampilkan lima pembatalan terbaru yang dilakukan pelanggan setelah dipanggil, dengan nomor tiket, jenis layanan dan waktu. Kedua layanan tampil pada panel yang sama, terpisah dari filter dan paginasi daftar. Pemberitahuan berasal dari riwayat dan tetap terlihat setelah muat ulang. Jika ada panggilan pengganti otomatis, nomor penggantinya ikut ditampilkan.
+
+Staf dapat mengaktifkan panggilan otomatis secara terpisah per layanan. Pengaturan awal nonaktif. Jika aktif, pembatalan pelanggan dari status Called memanggil satu Waiting berikutnya dalam urutan layanan yang sama, dengan batas hadir baru dari pengaturan yang sudah berlaku. Pembatalan dan panggilan dicatat dalam satu transaksi. Antrean kosong saat pembatalan tidak menjadwalkan panggilan kemudian; retry pembatalan yang sama tidak memanggil tiket tambahan. Pembatalan Waiting, pembatalan oleh staf, dan perpindahan layanan tidak memicu panggilan otomatis. Panggilan manual tetap tersedia sebagai tindakan staf tersendiri.
+
+## Pilihan antrean pelanggan — 18 November 2026
+
+Permintaan pengguna dalam percakapan ini secara eksplisit mengizinkan backend, UI pelanggan dan pembaruan Figma V2 untuk pilihan pada S-PROP-REV §6.2.5/F12. Pengguna mengonfirmasi dua rincian yang belum dijelaskan proposal: pindah layanan/beri giliran **hanya saat Waiting**, dan beri giliran dapat diulang dengan konfirmasi baru. Ini menggantikan penundaan kedua fitur pada rekaman 17 November di bawah, tanpa menerima seluruh aturan proposal atau menyatakan validasi restoran selesai.
+
+- **Tetap di antrean:** tutup pilihan tanpa penulisan database.
+- **Pindah layanan:** tiket asal menjadi Cancelled dengan alasan `service_switch`; satu tiket Waiting baru dibuat pada akhir antrean tujuan, dengan nomor A global baru dan data pelanggan yang sama. Nomor, jenis, hash akses dan riwayat asli tetap tersimpan. Pelanggan diarahkan ke tautan privat baru; halaman tiket lama juga menyediakan akses ke tiket pengganti.
+- **Beri giliran:** pindah ke belakang hingga tiga tiket Waiting berikutnya pada layanan yang sama. Jika kurang dari tiga, pindah ke akhir; jika tidak ada, tampilkan penjelasan tanpa mengubah posisi. Nomor dan tautan tiket tetap. Setiap konfirmasi berbeda boleh mengulangi tindakan; retry operation_id yang sama tidak memindahkan lagi.
+- **Batalkan antrean:** tetap tersedia pada Waiting/Called, wajib memilih Terlalu lama (`too_long`), Sudah dapat tempat lain (`found_elsewhere`), Rencana berubah (`plans_changed`), atau Lainnya (`other`). Tidak ditambahkan isian bebas. Alasan `customer` lama dan alasan staf tetap terbaca tanpa ditulis ulang.
+
+Nomor tampilan bukan lagi kunci pengurutan setelah beri giliran: `queue_order` menyimpan posisi relatif. Panggilan berikutnya, daftar staf, posisi dan ETA menggunakan urutan yang sama, tetap dibatasi layanan. Tiket baru masuk di akhir; Called/Arrived tidak ikut dipindah. Lifecycle, nomor global, grace/deadline, ETA interval, beberapa Called sekaligus dan tindakan staf tetap berlaku. Transfer memang mengurangi satu Waiting pada asal dan menambah satu Waiting pada tujuan; panggilan biasa tetap independen.
+
+Perpindahan, counter dan event dilakukan atomik dengan mutex settings → tiket. Event transfer menghubungkan tiket asal/pengganti; token pengganti diturunkan dengan HMAC dari rahasia asal, operation_id dan application key agar retry mendapat tautan yang sama, tanpa menyimpan token plaintext. Pertahankan application key; rotasi key memerlukan strategi terpisah untuk pemulihan tautan dari tiket lama. Migration tambahan mengisi `queue_order = number` pada data lama; rollback menolak jika pengurutan/transfer sudah digunakan.
+
+Kode dan pengujian terisolasi tersedia; migration operasional diaktifkan setelah persetujuan rollout eksplisit pengguna pada 18 November 2026, dengan backup SQL terverifikasi dan seluruh field domain lama dipertahankan. Metadata live V2 membuktikan dialog lama `39:301`/`39:432`, tetapi belum memuat seluruh pilihan F12. Connector mencapai batas kuota dan kedua alat browser gagal memulai; pembaruan canvas, pemeriksaan visual desktop/mobile dan interaksi keyboard belum dapat diselesaikan. UI aplikasi memperluas komponen/style yang sudah ada dan menyediakan halaman pilihan tanpa JavaScript. Batas verifikasi rinci ada pada `docs/verification.md`.
+
 ## Dua antrean operasional — 17 November 2026
 
 Permintaan pengguna pada tugas ini mengizinkan perubahan backend, schema, dan antarmuka untuk memisahkan Makan di Tempat (`dine_in`) dan Bawa Pulang (`takeaway`). Registrasi harus memilih layanan; jenis tiket tetap melekat selama siklusnya. FIFO, posisi, jumlah menunggu, panggilan terakhir, daftar/pelanggan aktif, pencarian, paginasi, dan tindakan staf dibatasi pada layanan yang dipilih. Tautan privat menentukan jenis tiket pelanggan; parameter URL tidak dapat memindahkannya ke antrean lain.
@@ -23,7 +44,7 @@ Pada tabel implementasi awal di bawah, D = presentasi historis `A\Draf_Presentas
 | QR/tautan browser, ambil nomor | D3,7; P F1-F2 | Halaman `/`; URL dapat dijadikan tujuan QR |
 | Posisi/status/perkiraan | D3,10; P F3,F8 | Tautan privat, polling 5 detik, interval dapat diatur |
 | Giliran hampir tiba | P F4, tidak dihapus oleh D | Indikator ketika <=2 antrean menunggu di depan; threshold usulan |
-| Pembatalan pelanggan dengan konfirmasi | D4,6,10; F | Dialog sebelum POST; Waiting/Called saja |
+| Pilihan/pembatalan pelanggan | D4,6,10; F; S-PROP-REV §6.2.5/F12 dan persetujuan 18 November | Tetap, pindah layanan, beri giliran, batal dengan alasan; aturan status mengikuti rekaman 18 November |
 | Login dan daftar staf | D6,11; P16 | Session login, pencarian/filter/paginasi |
 | Panggil/hadir/selesai | D3,7,11; P F5-F6 | FIFO; beberapa Called; hadir oleh staf; selesai saat diarahkan ke meja |
 | Lewati/tidak hadir | D7,11; P F7 | Cancelled dengan alasan; tidak ada pemulihan posisi |

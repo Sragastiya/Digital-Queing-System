@@ -831,6 +831,16 @@ dialog .confirmation-reason { margin-top: -8px; margin-bottom: 20px; padding: 10
 .pagination-disabled { color: var(--muted); opacity: .7; }
 .page-number { padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: white; white-space: nowrap; }
 .settings-panel .field-error { margin: -4px 0 12px; }
+.settings-panel select { margin: 0 0 14px; }
+.staff-cancellations { margin: 0 0 20px; }
+.staff-cancellations h2 { margin: 0 0 8px; }
+.cancellation-notices { list-style: none; margin: 0; padding: 0; }
+.cancellation-notices li {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 20px;
+    padding: 12px 16px; margin-bottom: 6px; border: 1px solid var(--line); border-left: 4px solid var(--red);
+    border-radius: 8px; background: white;
+}
+.cancellation-notices time { color: var(--muted); font-size: 12px; }
 
 @media (max-width: 1100px) {
     .pending-actions .ticket-actions { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
@@ -889,6 +899,17 @@ dialog .confirmation-reason { margin-top: -8px; margin-bottom: 20px; padding: 10
 }
 
 /* Queue selection follows the existing Figma V2 service cards and staff tabs. */
+#ticket-options-dialog { width: min(438px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.customer-options h2 { margin-top: 8px; }
+.option-identity { margin: 8px 0 20px; color: var(--muted); }
+.option-hint { margin: 8px 0 18px; color: var(--muted); font-size: 12px; }
+.queue-option { border: 1px solid var(--line); border-radius: 10px; margin: 12px 0 0; padding: 16px; background: white; }
+.queue-option summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.queue-option summary span { display: block; margin: 5px 0 0; color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.5; }
+.queue-option p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.queue-option form { margin-top: 12px; }
+.queue-option select { margin-bottom: 14px; }
+.cancellation-option summary { color: var(--red); }
 [hidden] { display: none !important; }
 .service-selector { border: 0; padding: 0; margin: 22px 0; min-width: 0; }
 .service-selector legend { padding: 0; margin-bottom: 10px; font-weight: 700; font-size: 14px; }

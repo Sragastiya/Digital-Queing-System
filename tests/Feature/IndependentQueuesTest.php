@@ -122,7 +122,7 @@ class IndependentQueuesTest extends TestCase
         $this->assertSame($takeawayFirst->displayNumber(), $estimate->snapshot(QueueType::Takeaway)['latest_called']);
         $this->assertSame(4, $estimate->snapshot(QueueType::DineIn, $dineInThird)['estimate_minutes']);
 
-        $queue->transition($dineInSecond, 'cancel', (string) Str::uuid(), null);
+        $queue->transition($dineInSecond, 'cancel', (string) Str::uuid(), null, 'plans_changed');
         $this->assertSame(0, $estimate->snapshot(QueueType::DineIn, $dineInThird)['ahead']);
         $this->assertSame(1, $estimate->snapshot(QueueType::Takeaway)['waiting_count']);
         $this->assertSame('takeaway', $takeaway['queue_type']);
@@ -191,7 +191,7 @@ class IndependentQueuesTest extends TestCase
         $arrived = $queue->transition($called, 'arrive', (string) Str::uuid(), $staff->id);
         $this->assertSame(QueueType::Takeaway, $arrived->queue_type);
         $this->assertSame(TicketStatus::Arrived, $arrived->status);
-        $this->assertRejected(fn () => $queue->transition($arrived, 'cancel', (string) Str::uuid(), null));
+        $this->assertRejected(fn () => $queue->transition($arrived, 'cancel', (string) Str::uuid(), null, 'plans_changed'));
         $this->assertRejected(fn () => $queue->transition($arrived, 'cancel', (string) Str::uuid(), $staff->id, 'skipped'));
 
         $completed = $queue->transition($arrived, 'complete', (string) Str::uuid(), $staff->id);
@@ -230,11 +230,11 @@ class IndependentQueuesTest extends TestCase
         [$takeaway] = $this->issue(QueueType::Takeaway);
         $queue = app(QueueService::class);
         $operation = (string) Str::uuid();
-        $queue->transition($dineIn, 'cancel', $operation, null);
-        $this->assertRejected(fn () => $queue->transition($takeaway, 'cancel', $operation, null));
+        $queue->transition($dineIn, 'cancel', $operation, null, 'plans_changed');
+        $this->assertRejected(fn () => $queue->transition($takeaway, 'cancel', $operation, null, 'plans_changed'));
         $this->assertSame(TicketStatus::Waiting, $takeaway->fresh()->status);
         $dineIn->queue_type = QueueType::Takeaway;
-        $this->assertSame(QueueType::DineIn, $queue->transition($dineIn, 'cancel', $operation, null)->queue_type);
+        $this->assertSame(QueueType::DineIn, $queue->transition($dineIn, 'cancel', $operation, null, 'plans_changed')->queue_type);
         $this->assertSame(1, QueueEvent::where('operation_id', $operation)->count());
     }
 
@@ -258,6 +258,20 @@ class IndependentQueuesTest extends TestCase
             app()->forgetInstance('db.schema');
             Schema::clearResolvedInstance('db.schema');
         }
+    }
+
+    private function issueOnPreviousSchema(QueueType $type): QueueTicket
+    {
+        // Historical migration fixtures must not call application code requiring newer columns.
+        $number = QueueSetting::findOrFail(1)->next_number;
+        $id = DB::table('queue_tickets')->insertGetId(['number' => $number, 'queue_type' => $type->value,
+            'access_token_hash' => hash('sha256', bin2hex(random_bytes(32))), 'customer_name' => 'Data lama sintetis',
+            'party_size' => 2, 'status' => 'waiting', 'joined_at' => now()]);
+        DB::table('queue_events')->insert(['queue_ticket_id' => $id, 'queue_type' => $type->value, 'actor' => 'customer',
+            'action' => 'issue', 'to_status' => 'waiting', 'operation_id' => (string) Str::uuid(), 'created_at' => now()]);
+        QueueSetting::findOrFail(1)->increment('next_number');
+
+        return QueueTicket::findOrFail($id);
     }
 
     public function test_forward_migration_preserves_legacy_numbers_private_access_history_and_counter(): void
@@ -285,6 +299,7 @@ class IndependentQueuesTest extends TestCase
             $this->assertSame(57, QueueSetting::findOrFail(1)->next_number);
             $this->assertSame(6, QueueSetting::findOrFail(1)->estimate_interval_minutes);
 
+            (require database_path('migrations/2026_11_18_000001_add_customer_queue_options.php'))->up();
             [$newTicket] = $this->issue(QueueType::Takeaway);
             $this->assertSame('A-057', $newTicket->displayNumber());
             $this->assertSame(QueueType::Takeaway, $newTicket->queue_type);
@@ -297,7 +312,7 @@ class IndependentQueuesTest extends TestCase
     {
         $this->withLegacyDatabase(function ($migration) {
             $migration->up();
-            [$ticket] = $this->issue(QueueType::Takeaway);
+            $ticket = $this->issueOnPreviousSchema(QueueType::Takeaway);
             $counter = QueueSetting::findOrFail(1)->next_number;
             try {
                 $migration->down();
@@ -330,7 +345,7 @@ class IndependentQueuesTest extends TestCase
     {
         $this->withLegacyDatabase(function ($migration) {
             $migration->up();
-            [$ticket] = $this->issue(QueueType::DineIn);
+            $ticket = $this->issueOnPreviousSchema(QueueType::DineIn);
             $hash = $ticket->access_token_hash;
             $migration->down();
             $this->assertFalse(Schema::hasColumn('queue_tickets', 'queue_type'));

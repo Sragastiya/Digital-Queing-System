@@ -2,8 +2,10 @@
     'use strict';
 
     const dialog = document.getElementById('confirm-dialog');
+    const optionsDialog = document.getElementById('ticket-options-dialog');
     const ticket = document.querySelector('[data-ticket-poll]');
     const board = document.querySelector('[data-staff-poll]');
+    const cancellations = document.querySelector('[data-staff-cancellations]');
     const indicator = document.getElementById('refresh-state');
     const formState = document.getElementById('form-state');
     const terminal = ticket?.dataset.terminal === 'true';
@@ -15,6 +17,7 @@
     let busyControls = [];
     let recoveryTimer = null;
     let fetching = false;
+    let optionsTrigger = null;
 
     function setIndicator(message, stale = false) {
         if (!indicator) return;
@@ -66,6 +69,16 @@
     });
 
     document.addEventListener('click', event => {
+        const openOptions = event.target.closest('[data-open-options]');
+        if (openOptions && optionsDialog?.showModal) {
+            event.preventDefault();
+            optionsTrigger = openOptions;
+            optionsDialog.showModal();
+        }
+        if (event.target.closest('[data-close-options]') && optionsDialog?.open) {
+            event.preventDefault();
+            optionsDialog.close();
+        }
         const step = event.target.closest('[data-step]');
         if (step) {
             const input = step.parentElement.querySelector('input');
@@ -103,6 +116,11 @@
         returnFocus = null;
     });
 
+    optionsDialog?.addEventListener('close', () => {
+        if (optionsTrigger?.isConnected) optionsTrigger.focus();
+        optionsTrigger = null;
+    });
+
     document.addEventListener('submit', event => {
         const form = event.target;
         if (form.method.toLowerCase() !== 'post') return;
@@ -116,6 +134,11 @@
             pendingSubmitter = event.submitter;
             returnFocus = event.submitter || document.activeElement;
             document.getElementById('confirm-title').textContent = form.dataset.confirm;
+            document.getElementById('confirm-copy').textContent = form.dataset.confirmCopy || 'Nomor akan keluar dari antrean. Untuk kembali, pelanggan perlu mengambil nomor baru.';
+            dialog.querySelector('.dialog-eyebrow').textContent = form.dataset.confirmKind === 'change' ? 'KONFIRMASI PERUBAHAN' : 'KONFIRMASI PEMBATALAN';
+            const confirmButton = document.getElementById('confirm-submit');
+            confirmButton.textContent = form.dataset.confirmLabel || 'Ya, batalkan';
+            confirmButton.classList.toggle('danger', form.dataset.confirmKind !== 'change');
             const reason = form.querySelector('[name="reason"]');
             const reasonCopy = document.getElementById('confirm-reason');
             reasonCopy.hidden = !reason;
@@ -159,11 +182,7 @@
     }
 
     async function poll(manual = false) {
-        if ((!ticket && !board) || terminal || busyForm || fetching || document.hidden || dialog?.open) return;
-        if (board && (filtersDirty() || board.contains(document.activeElement))) {
-            if (manual) setIndicator('Selesaikan tindakan atau terapkan filter sebelum memperbarui.');
-            return;
-        }
+        if ((!ticket && !board) || terminal || busyForm || fetching || document.hidden || dialog?.open || optionsDialog?.open) return;
         if (!navigator.onLine) {
             setIndicator('Anda sedang offline. Status akan diperbarui setelah tersambung kembali.', true);
             return;
@@ -186,7 +205,7 @@
             const data = await response.json();
             if (data.queue_type !== (ticket || board).dataset.queueType) throw new Error('Queue changed');
             // A pending response must not replace controls opened or edited since fetch began.
-            if (busyForm || dialog?.open) return;
+            if (busyForm || dialog?.open || optionsDialog?.open) return;
             if (ticket) {
                 if (data.status !== ticket.dataset.status) {
                     location.reload();
@@ -202,7 +221,15 @@
                 write('#near-title', data.snapshot.near_turn ? 'Giliran hampir tiba' : 'Pantau halaman ini');
                 write('#near-copy', data.snapshot.ahead === 0 ? 'Giliran berikutnya; tunggu panggilan staf.' : 'Datang saat giliranmu hampir tiba. Estimasi dapat berubah mengikuti layanan.');
             } else {
-                if (filtersDirty() || board.contains(document.activeElement)) return;
+                const latestCancellation = String(data.latest_cancellation_id ?? '');
+                if (cancellations && latestCancellation !== cancellations.dataset.latestId) {
+                    cancellations.innerHTML = data.cancellations_html;
+                    cancellations.dataset.latestId = latestCancellation;
+                }
+                if (filtersDirty() || board.contains(document.activeElement)) {
+                    if (manual) setIndicator('Pemberitahuan diperbarui. Selesaikan tindakan atau terapkan filter untuk memperbarui daftar.');
+                    return;
+                }
                 const openDetails = new Set(Array.from(board.querySelectorAll('[data-detail-id][open]')).map(detail => detail.dataset.detailId));
                 const reasons = new Map(Array.from(board.querySelectorAll('select[name="reason"]')).map(select => [select.id, select.value]));
                 board.innerHTML = data.html;
