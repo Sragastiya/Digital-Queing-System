@@ -71,7 +71,9 @@
         @auth
             <a href="{{ route('staff.index') }}">Dasbor staf</a>
         @else
-            <a href="{{ route('login') }}">Masuk staf</a>
+            @unless(request()->routeIs('login'))
+                <a href="{{ route('login') }}">Masuk staf</a>
+            @endunless
         @endauth
     </footer>
 @endif
